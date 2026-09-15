@@ -1,0 +1,5 @@
+# Runtime dependencies for all seven training workflows.
+# Recommended Python version: 3.10 or 3.11.
+
+numpy>=1.26,<3.0
+torch>=2.2,<3.0
