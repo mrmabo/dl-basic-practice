@@ -63,7 +63,8 @@ def stratified_split(labels, train_ratio=0.6, val_ratio=0.2):
 def build_dataloaders():
     if not DATA_PATH.exists():
         raise FileNotFoundError(
-            f"没有找到 {DATA_PATH}\n请先运行：python download_01_mlp_wine.py"
+            f"没有找到 {DATA_PATH}\n"
+            "请先运行：python download_data/download_01_mlp_wine.py"
         )
 
     raw = np.loadtxt(DATA_PATH, delimiter=",", dtype=np.float32)
