@@ -23,10 +23,10 @@ python 07_gnn_node_classification.py
 |---|---|---|
 | MLP 表格分类 | UCI Wine | `python download_01_mlp_wine.py` |
 | CNN 图像分类 | MNIST | `python download_02_cnn_mnist.py` |
-| LSTM 时序预测 | AirPassengers（两列 CSV） | `python download_03_lstm_bike_sharing.py` |
-| Transformer 多变量预测 | ETTh1（规整 CSV） | `python download_04_transformer_air_quality.py` |
-| Autoencoder 异常检测 | UCI Wisconsin Breast Cancer | `python download_05_autoencoder_kdd99.py` |
-| RNN 序列分类 | UCR SyntheticControl（600条） | `python download_06_rnn_forda.py` |
+| LSTM 时序预测 | AirPassengers（两列 CSV） | `python download_03_lstm_air_passengers.py` |
+| Transformer 多变量预测 | ETTh1（规整 CSV） | `python download_04_transformer_etth1.py` |
+| Autoencoder 异常检测 | UCI Wisconsin Breast Cancer | `python download_05_autoencoder_breast_cancer.py` |
+| RNN 序列分类 | UCR SyntheticControl（600条） | `python download_06_rnn_synthetic_control.py` |
 | GNN 节点分类 | LINQS Cora | `python download_07_gnn_cora.py` |
 
 这些脚本负责获取和解压原始数据。下一练习阶段，可以把对应训练文件中的合成 `Dataset` 替换成读取真实文件的 `Dataset`，训练循环和模型主体保持不变。
