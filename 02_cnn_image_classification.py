@@ -78,7 +78,7 @@ def build_dataloaders():
         raise FileNotFoundError(
             "缺少 MNIST 文件：\n"
             + "\n".join(missing)
-            + "\n请先运行：python download_02_cnn_mnist.py"
+            + "\n请先运行：python download_data/download_02_cnn_mnist.py"
         )
 
     all_train_images = read_idx_images(paths["train_images"])
