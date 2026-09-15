@@ -34,7 +34,7 @@ def load_etth1():
     if not DATA_PATH.exists():
         raise FileNotFoundError(
             f"没有找到 {DATA_PATH}\n"
-            "请先运行：python download_04_transformer_etth1.py"
+            "请先运行：python download_data/download_04_transformer_etth1.py"
         )
     timestamps, rows = [], []
     with DATA_PATH.open(newline="", encoding="utf-8") as file:
