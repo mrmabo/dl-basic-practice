@@ -1,6 +1,6 @@
 # PyTorch 七套完整基础流程
 
-每个脚本都包含：数据生成、`Dataset`、`DataLoader`、模型、训练、验证、保存最佳权重、加载权重、测试与预测。
+每个训练脚本都使用对应的公开数据，并包含：数据读取与预处理、`Dataset`、`DataLoader`、模型、训练、验证、保存最佳权重、加载权重、测试与预测。
 
 ## 使用 Conda 配置环境
 
@@ -9,13 +9,13 @@
 创建新的 Conda 环境：
 
 ```bash
-conda create -n py311-dl-basic python=3.11 -y
+conda create -n dl-basic-practice python=3.11 -y
 ```
 
 激活环境：
 
 ```bash
-conda activate py311-dl-basic
+conda activate dl-basic-practice
 ```
 
 进入本项目目录，然后安装依赖：
@@ -24,23 +24,30 @@ conda activate py311-dl-basic
 python -m pip install -r requirements.txt
 ```
 
-`requirements.txt` 使用通用的 PyTorch 依赖。对于有 NVIDIA GPU 的环境，安装完成后还需要将通用 CPU 版本替换为 CUDA 版本：
-
-```bash
-python -m pip uninstall torch -y
-python -m pip install torch --index-url https://download.pytorch.org/whl/cu128
-```
-
-如果只使用 CPU，可以跳过上面的 CUDA 安装步骤。
-
 验证 Python、PyTorch、NumPy 和 CUDA 状态：
 
 ```bash
 python --version
-python -c "import torch, numpy; print('PyTorch:', torch.__version__); print('NumPy:', numpy.__version__); print('Built CUDA:', torch.version.cuda); print('CUDA available:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
+python -c "import torch, numpy; print('PyTorch:', torch.__version__); print('NumPy:', numpy.__version__); print('CUDA available:', torch.cuda.is_available())"
 ```
 
-如果 PyTorch 版本包含 `+cu`，且 `CUDA available: True`，说明当前 PyTorch 可以使用 NVIDIA GPU。若版本包含 `+cpu` 或 `Built CUDA: None`，说明安装的是 CPU 版本；显示 `False` 时仍然可以使用 CPU 运行这些练习。
+如果最后显示 `CUDA available: True`，说明当前 PyTorch 可以使用 NVIDIA GPU；显示 `False` 时仍然可以使用 CPU 运行这些练习。
+
+## 下载公开数据
+
+第一次运行训练流程前，先下载每套流程对应的公开数据：
+
+```bash
+python download_01_mlp_wine.py
+python download_02_cnn_mnist.py
+python download_03_lstm_air_passengers.py
+python download_04_transformer_etth1.py
+python download_05_autoencoder_breast_cancer.py
+python download_06_rnn_synthetic_control.py
+python download_07_gnn_cora.py
+```
+
+所有数据都会保存在仓库的 `data/` 目录中，该目录不会提交到 GitHub。
 
 ## 运行训练流程
 
@@ -149,9 +156,9 @@ python 07_gnn_node_classification.py
 
 第二阶段建议顺序：U-Net 图像分割 → 文本分类 → 迁移学习 → 图像回归 → 多步时间序列预测。
 
-## 下载对应的公开真实数据
+## 训练流程与公开数据对应关系
 
-训练脚本默认使用合成数据，确保无需联网也能练习完整流程。下面每个下载脚本会把真实数据保存到 `data/`，且重复运行时不会重复下载压缩包：
+下面每个下载脚本会把公开数据保存到 `data/`。训练脚本会直接读取这些数据；如果文件不存在，会提示需要执行的下载命令：
 
 | 流程 | 公开数据 | 下载命令 |
 |---|---|---|
@@ -163,6 +170,6 @@ python 07_gnn_node_classification.py
 | RNN 序列分类 | UCR SyntheticControl（600条） | `python download_06_rnn_synthetic_control.py` |
 | GNN 节点分类 | LINQS Cora | `python download_07_gnn_cora.py` |
 
-这些脚本负责获取和解压原始数据。下一练习阶段，可以把对应训练文件中的合成 `Dataset` 替换成读取真实文件的 `Dataset`，训练循环和模型主体保持不变。
+所有训练脚本都只使用训练集统计量进行标准化，避免验证集和测试集信息泄漏。时序数据按照时间顺序划分，分类数据则采用固定随机种子进行可复现的划分。
 
 建议练习顺序：先运行并逐段理解；第二天只看模块标题重写；第三天从空白文件重写；第四天修改数据维度、类别数或预测目标。
