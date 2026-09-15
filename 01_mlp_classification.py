@@ -1,13 +1,23 @@
-"""完整流程 1：MLP 多分类（合成表格数据，无需下载）。"""
+"""完整流程 1：使用 UCI Wine 公开数据训练 MLP 多分类模型。"""
 
+import os
 import random
+from pathlib import Path
+
 import numpy as np
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset
 
-SEED, BATCH_SIZE, EPOCHS, LR = 42, 64, 10, 1e-3
+SEED = 42
+BATCH_SIZE = 32
+EPOCHS = int(os.getenv("EPOCHS", "30"))
+LEARNING_RATE = 1e-3
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+ROOT = Path(__file__).resolve().parent
+DATA_PATH = ROOT / "data" / "mlp_wine" / "wine.data"
+CHECKPOINT_PATH = ROOT / "best_mlp.pt"
 
 
 def set_seed(seed=SEED):
@@ -18,86 +28,138 @@ def set_seed(seed=SEED):
         torch.cuda.manual_seed_all(seed)
 
 
-class TabularDataset(Dataset):
-    def __init__(self, n=2400, n_features=20, n_classes=3):
-        g = torch.Generator().manual_seed(SEED)
-        centers = torch.randn(n_classes, n_features, generator=g) * 2
-        self.y = torch.randint(n_classes, (n,), generator=g)
-        self.x = centers[self.y] + 0.8 * torch.randn(n, n_features, generator=g)
+class WineDataset(Dataset):
+    def __init__(self, features, labels):
+        self.features = torch.tensor(features, dtype=torch.float32)
+        self.labels = torch.tensor(labels, dtype=torch.long)
 
     def __len__(self):
-        return len(self.y)
+        return len(self.labels)
 
-    def __getitem__(self, idx):
-        return self.x[idx], self.y[idx]
+    def __getitem__(self, index):
+        return self.features[index], self.labels[index]
+
+
+def stratified_split(labels, train_ratio=0.6, val_ratio=0.2):
+    """按类别划分索引，避免小数据集的某个集合缺少某一类别。"""
+    rng = np.random.default_rng(SEED)
+    train_indices, val_indices, test_indices = [], [], []
+
+    for label in np.unique(labels):
+        class_indices = np.where(labels == label)[0]
+        rng.shuffle(class_indices)
+        train_end = int(len(class_indices) * train_ratio)
+        val_end = train_end + int(len(class_indices) * val_ratio)
+        train_indices.extend(class_indices[:train_end])
+        val_indices.extend(class_indices[train_end:val_end])
+        test_indices.extend(class_indices[val_end:])
+
+    rng.shuffle(train_indices)
+    rng.shuffle(val_indices)
+    rng.shuffle(test_indices)
+    return np.array(train_indices), np.array(val_indices), np.array(test_indices)
+
+
+def build_dataloaders():
+    if not DATA_PATH.exists():
+        raise FileNotFoundError(
+            f"没有找到 {DATA_PATH}\n请先运行：python download_01_mlp_wine.py"
+        )
+
+    raw = np.loadtxt(DATA_PATH, delimiter=",", dtype=np.float32)
+    labels = raw[:, 0].astype(np.int64) - 1
+    features = raw[:, 1:]
+    train_idx, val_idx, test_idx = stratified_split(labels)
+
+    # 只使用训练集统计量标准化，避免验证集和测试集信息泄漏。
+    mean = features[train_idx].mean(axis=0)
+    std = features[train_idx].std(axis=0)
+    std[std == 0] = 1.0
+    features = (features - mean) / std
+
+    train_dataset = WineDataset(features[train_idx], labels[train_idx])
+    val_dataset = WineDataset(features[val_idx], labels[val_idx])
+    test_dataset = WineDataset(features[test_idx], labels[test_idx])
+
+    train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataset, BATCH_SIZE)
+    test_loader = DataLoader(test_dataset, BATCH_SIZE)
+    return train_loader, val_loader, test_loader
 
 
 class MLP(nn.Module):
-    def __init__(self, in_features=20, n_classes=3):
+    def __init__(self, input_features=13, num_classes=3):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(in_features, 64),
+        self.network = nn.Sequential(
+            nn.Linear(input_features, 64),
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(32, n_classes),
+            nn.Linear(32, num_classes),
         )
 
-    def forward(self, x):
-        return self.net(x)  # [B,20] -> [B,3]
+    def forward(self, features):
+        return self.network(features)  # [B, 13] -> [B, 3]
 
 
-def run_epoch(model, loader, criterion, optimizer=None):
+def run_epoch(model, loader, loss_fn, optimizer=None):
     training = optimizer is not None
     model.train(training)
-    total_loss = correct = total = 0
+    total_loss = 0.0
+    correct = 0
+    total = 0
+
     with torch.set_grad_enabled(training):
-        for x, y in loader:
-            x, y = x.to(DEVICE), y.to(DEVICE)
+        for features, labels in loader:
+            features = features.to(DEVICE)
+            labels = labels.to(DEVICE)
             if training:
                 optimizer.zero_grad()
-            logits = model(x)
-            loss = criterion(logits, y)
+            logits = model(features)
+            loss = loss_fn(logits, labels)
             if training:
                 loss.backward()
                 optimizer.step()
-            total_loss += loss.item() * x.size(0)
-            correct += (logits.argmax(1) == y).sum().item()
-            total += x.size(0)
+            total_loss += loss.item() * features.size(0)
+            correct += (logits.argmax(dim=1) == labels).sum().item()
+            total += features.size(0)
+
     return total_loss / total, correct / total
 
 
 def main():
     set_seed()
-    full = TabularDataset()
-    train_ds, val_ds, test_ds = random_split(
-        full, [1600, 400, 400], generator=torch.Generator().manual_seed(SEED)
-    )
-    train_loader = DataLoader(train_ds, BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_ds, BATCH_SIZE)
-    test_loader = DataLoader(test_ds, BATCH_SIZE)
+    train_loader, val_loader, test_loader = build_dataloaders()
     model = MLP().to(DEVICE)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-    best = float("inf")
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    best_val_loss = float("inf")
     for epoch in range(1, EPOCHS + 1):
-        tr_loss, tr_acc = run_epoch(model, train_loader, criterion, optimizer)
-        va_loss, va_acc = run_epoch(model, val_loader, criterion)
-        if va_loss < best:
-            best = va_loss
-            torch.save(model.state_dict(), "best_mlp.pt")
+        train_loss, train_acc = run_epoch(model, train_loader, loss_fn, optimizer)
+        val_loss, val_acc = run_epoch(model, val_loader, loss_fn)
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            torch.save(model.state_dict(), CHECKPOINT_PATH)
         print(
-            f"epoch={epoch:02d} train_loss={tr_loss:.4f} train_acc={tr_acc:.3f} val_loss={va_loss:.4f} val_acc={va_acc:.3f}"
+            f"epoch={epoch:02d} train_loss={train_loss:.4f} "
+            f"train_acc={train_acc:.3f} val_loss={val_loss:.4f} "
+            f"val_acc={val_acc:.3f}"
         )
+
     model.load_state_dict(
-        torch.load("best_mlp.pt", map_location=DEVICE, weights_only=True)
+        torch.load(CHECKPOINT_PATH, map_location=DEVICE, weights_only=True)
     )
-    test_loss, test_acc = run_epoch(model, test_loader, criterion)
+    test_loss, test_acc = run_epoch(model, test_loader, loss_fn)
     print(f"test_loss={test_loss:.4f} test_acc={test_acc:.3f}")
-    x, y = next(iter(test_loader))
-    pred = model(x[:5].to(DEVICE)).argmax(1).cpu()
-    print("pred:", pred.tolist(), "true:", y[:5].tolist())
+
+    features, labels = next(iter(test_loader))
+    model.eval()
+    with torch.no_grad():
+        predictions = model(features[:5].to(DEVICE)).argmax(dim=1).cpu()
+    print("pred:", predictions.tolist())
+    print("true:", labels[:5].tolist())
 
 
 if __name__ == "__main__":
