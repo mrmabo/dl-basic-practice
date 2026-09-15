@@ -9,13 +9,13 @@
 创建新的 Conda 环境：
 
 ```bash
-conda create -n dl-basic-practice python=3.11 -y
+conda create -n py311-dl-basic python=3.11 -y
 ```
 
 激活环境：
 
 ```bash
-conda activate dl-basic-practice
+conda activate py311-dl-basic
 ```
 
 进入本项目目录，然后安装依赖：
@@ -24,14 +24,23 @@ conda activate dl-basic-practice
 python -m pip install -r requirements.txt
 ```
 
+`requirements.txt` 使用通用的 PyTorch 依赖。对于有 NVIDIA GPU 的环境，安装完成后还需要将通用 CPU 版本替换为 CUDA 版本：
+
+```bash
+python -m pip uninstall torch -y
+python -m pip install torch --index-url https://download.pytorch.org/whl/cu128
+```
+
+如果只使用 CPU，可以跳过上面的 CUDA 安装步骤。
+
 验证 Python、PyTorch、NumPy 和 CUDA 状态：
 
 ```bash
 python --version
-python -c "import torch, numpy; print('PyTorch:', torch.__version__); print('NumPy:', numpy.__version__); print('CUDA available:', torch.cuda.is_available())"
+python -c "import torch, numpy; print('PyTorch:', torch.__version__); print('NumPy:', numpy.__version__); print('Built CUDA:', torch.version.cuda); print('CUDA available:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
 ```
 
-如果最后显示 `CUDA available: True`，说明当前 PyTorch 可以使用 NVIDIA GPU；显示 `False` 时仍然可以使用 CPU 运行这些练习。
+如果 PyTorch 版本包含 `+cu`，且 `CUDA available: True`，说明当前 PyTorch 可以使用 NVIDIA GPU。若版本包含 `+cpu` 或 `Built CUDA: None`，说明安装的是 CPU 版本；显示 `False` 时仍然可以使用 CPU 运行这些练习。
 
 ## 运行训练流程
 
