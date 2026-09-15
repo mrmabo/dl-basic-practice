@@ -2,8 +2,15 @@
 
 每个脚本都包含：数据生成、`Dataset`、`DataLoader`、模型、训练、验证、保存最佳权重、加载权重、测试与预测。
 
+建议使用 Python 3.10 或 3.11，并在虚拟环境中安装依赖：
+
 ```bash
-pip install torch numpy
+python -m pip install -r requirements.txt
+```
+
+然后可以分别运行七个完整流程：
+
+```bash
 python 01_mlp_classification.py
 python 02_cnn_image_classification.py
 python 03_lstm_time_series_forecast.py
