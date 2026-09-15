@@ -32,7 +32,7 @@ def load_series():
     if not DATA_PATH.exists():
         raise FileNotFoundError(
             f"没有找到 {DATA_PATH}\n"
-            "请先运行：python download_03_lstm_air_passengers.py"
+            "请先运行：python download_data/download_03_lstm_air_passengers.py"
         )
     with DATA_PATH.open(newline="", encoding="utf-8") as file:
         rows = list(csv.DictReader(file))
