@@ -45,7 +45,7 @@ def load_cora():
     if not CONTENT_PATH.exists() or not CITES_PATH.exists():
         raise FileNotFoundError(
             f"没有找到 {CONTENT_PATH} 或 {CITES_PATH}\n"
-            "请先运行：python download_07_gnn_cora.py"
+            "请先运行：python download_data/download_07_gnn_cora.py"
         )
 
     node_ids, features, text_labels = [], [], []
