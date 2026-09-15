@@ -38,13 +38,13 @@ python -c "import torch, numpy; print('PyTorch:', torch.__version__); print('Num
 第一次运行训练流程前，先下载每套流程对应的公开数据：
 
 ```bash
-python download_01_mlp_wine.py
-python download_02_cnn_mnist.py
-python download_03_lstm_air_passengers.py
-python download_04_transformer_etth1.py
-python download_05_autoencoder_breast_cancer.py
-python download_06_rnn_synthetic_control.py
-python download_07_gnn_cora.py
+python download_data/download_01_mlp_wine.py
+python download_data/download_02_cnn_mnist.py
+python download_data/download_03_lstm_air_passengers.py
+python download_data/download_04_transformer_etth1.py
+python download_data/download_05_autoencoder_breast_cancer.py
+python download_data/download_06_rnn_synthetic_control.py
+python download_data/download_07_gnn_cora.py
 ```
 
 所有数据都会保存在仓库的 `data/` 目录中，该目录不会提交到 GitHub。
@@ -162,13 +162,13 @@ python 07_gnn_node_classification.py
 
 | 流程 | 公开数据 | 下载命令 |
 |---|---|---|
-| MLP 表格分类 | UCI Wine | `python download_01_mlp_wine.py` |
-| CNN 图像分类 | MNIST | `python download_02_cnn_mnist.py` |
-| LSTM 时序预测 | AirPassengers（两列 CSV） | `python download_03_lstm_air_passengers.py` |
-| Transformer 多变量预测 | ETTh1（规整 CSV） | `python download_04_transformer_etth1.py` |
-| Autoencoder 异常检测 | UCI Wisconsin Breast Cancer | `python download_05_autoencoder_breast_cancer.py` |
-| RNN 序列分类 | UCR SyntheticControl（600条） | `python download_06_rnn_synthetic_control.py` |
-| GNN 节点分类 | LINQS Cora | `python download_07_gnn_cora.py` |
+| MLP 表格分类 | UCI Wine | `python download_data/download_01_mlp_wine.py` |
+| CNN 图像分类 | MNIST | `python download_data/download_02_cnn_mnist.py` |
+| LSTM 时序预测 | AirPassengers（两列 CSV） | `python download_data/download_03_lstm_air_passengers.py` |
+| Transformer 多变量预测 | ETTh1（规整 CSV） | `python download_data/download_04_transformer_etth1.py` |
+| Autoencoder 异常检测 | UCI Wisconsin Breast Cancer | `python download_data/download_05_autoencoder_breast_cancer.py` |
+| RNN 序列分类 | UCR SyntheticControl（600条） | `python download_data/download_06_rnn_synthetic_control.py` |
+| GNN 节点分类 | LINQS Cora | `python download_data/download_07_gnn_cora.py` |
 
 所有训练脚本都只使用训练集统计量进行标准化，避免验证集和测试集信息泄漏。时序数据按照时间顺序划分，分类数据则采用固定随机种子进行可复现的划分。
 
