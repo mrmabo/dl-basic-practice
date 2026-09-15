@@ -2,11 +2,38 @@
 
 每个脚本都包含：数据生成、`Dataset`、`DataLoader`、模型、训练、验证、保存最佳权重、加载权重、测试与预测。
 
-建议使用 Python 3.10 或 3.11，并在虚拟环境中安装依赖：
+## 使用 Conda 配置环境
+
+建议使用 Python 3.11。它对 PyTorch、NumPy 以及常用机器学习库的兼容性比较成熟。
+
+创建新的 Conda 环境：
+
+```bash
+conda create -n dl-basic-practice python=3.11 -y
+```
+
+激活环境：
+
+```bash
+conda activate dl-basic-practice
+```
+
+进入本项目目录，然后安装依赖：
 
 ```bash
 python -m pip install -r requirements.txt
 ```
+
+验证 Python、PyTorch、NumPy 和 CUDA 状态：
+
+```bash
+python --version
+python -c "import torch, numpy; print('PyTorch:', torch.__version__); print('NumPy:', numpy.__version__); print('CUDA available:', torch.cuda.is_available())"
+```
+
+如果最后显示 `CUDA available: True`，说明当前 PyTorch 可以使用 NVIDIA GPU；显示 `False` 时仍然可以使用 CPU 运行这些练习。
+
+## 运行训练流程
 
 然后可以分别运行七个完整流程：
 
