@@ -24,11 +24,11 @@ conda activate dl-basic-practice
 python -m pip install -r requirements.txt
 ```
 
-验证 Python、PyTorch、NumPy 和 CUDA 状态：
+验证 Python、PyTorch、NumPy、scikit-learn 和 CUDA 状态：
 
 ```bash
 python --version
-python -c "import torch, numpy; print('PyTorch:', torch.__version__); print('NumPy:', numpy.__version__); print('CUDA available:', torch.cuda.is_available())"
+python -c "import torch, numpy, sklearn; print('PyTorch:', torch.__version__); print('NumPy:', numpy.__version__); print('scikit-learn:', sklearn.__version__); print('CUDA available:', torch.cuda.is_available())"
 ```
 
 如果最后显示 `CUDA available: True`，说明当前 PyTorch 可以使用 NVIDIA GPU；显示 `False` 时仍然可以使用 CPU 运行这些练习。
@@ -64,6 +64,35 @@ python 07_gnn_node_classification.py
 ```
 
 其中 GNN 示例用纯 PyTorch 实现 GCN，不需要额外安装 `torch_geometric`。
+
+## 数据集划分策略
+
+现阶段优先练习完整的深度学习流程，因此当前执行路径统一使用 scikit-learn 的 `train_test_split`。原来的手写划分代码仍以“进阶练习”注释块保留在各脚本中，当前不会执行；以后学习 split 原理时可以与 library method 逐行对照。
+
+| 脚本 | 划分方式 | 必须保留的规则 |
+|---|---|---|
+| `01_mlp_classification.py` | 两次 `train_test_split` 得到 60% / 20% / 20% | 使用 `stratify` 保持 Wine 三个类别的比例 |
+| `02_cnn_image_classification.py` | 从 MNIST 官方训练集划出 5,000 条验证数据 | 使用 `stratify`；官方测试集保持不变 |
+| `03_lstm_time_series_forecast.py` | 两次 `train_test_split` 得到 70% / 15% / 15% | 必须设置 `shuffle=False`，保持时间顺序 |
+| `04_transformer_time_series_forecast.py` | 两次 `train_test_split` 得到 70% / 15% / 15% | 必须设置 `shuffle=False`，保持时间顺序 |
+| `05_autoencoder_anomaly_detection.py` | 正常样本划分为训练、验证和测试，异常样本放入测试集 | Autoencoder 的训练集和阈值验证集只包含正常样本 |
+| `06_rnn_sequence_classification.py` | 从 UCR 官方训练集划出 20% 验证数据 | 使用 `stratify`；官方测试集保持不变 |
+| `07_gnn_node_classification.py` | 每个类别划出 20 个训练节点和 30 个验证节点 | 使用布尔 mask 训练 GCN，其余节点用于测试 |
+
+无论使用哪种划分方式，都只使用训练集计算均值和标准差，验证集与测试集不能参与统计量拟合，否则会发生 data leakage。
+
+### 为什么现阶段使用 library method
+
+当前第一目标是熟练掌握：数据进入 `Dataset` / `DataLoader`、模型前向传播、loss、反向传播、验证、checkpoint 和 inference。`train_test_split` 是成熟且经过充分测试的工具，直接使用它可以减少与当前训练目标无关的代码，也更接近真实项目。
+
+熟练以后完全可以阅读 library method 的实现，并自己写一个简化版本。建议顺序：
+
+1. 先熟练使用 `train_test_split` 的 `train_size`、`test_size`、`random_state`、`shuffle` 和 `stratify`。
+2. 使用 `inspect.getsource(train_test_split)` 查看入口实现，再继续阅读它调用的 `ShuffleSplit` 和 `StratifiedShuffleSplit`。
+3. 阅读每个脚本中保留的“进阶练习”注释代码，先复制到单独的练习文件中运行，再与当前 library method 做对照实验。
+4. 用相同 seed 检查结果可复现，并用类别计数验证 stratified split 是否保持了类别比例。
+
+以后也可以用同样的“先会用 → 再读源码 → 最后写简化版”方法学习 `StandardScaler`、常见 metric、PyTorch 的 `Dataset` 和 `DataLoader`。目标不是复刻 library 的全部边界处理，而是理解核心算法和接口设计。
 
 ## 空白重写练习模板
 

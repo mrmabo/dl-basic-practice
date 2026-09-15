@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
@@ -59,20 +60,49 @@ class ETTH1Dataset(Dataset):
 
 def build_dataloaders():
     timestamps, raw = load_etth1()
-    train_end = int(len(raw) * 0.70)
-    val_end = int(len(raw) * 0.85)
-    mean = raw[:train_end].mean(axis=0)
-    std = raw[:train_end].std(axis=0)
-    std[std == 0] = 1.0
-    normalized = (raw - mean) / std
 
-    train_dataset = ETTH1Dataset(normalized[:train_end])
-    val_dataset = ETTH1Dataset(normalized[train_end - LOOKBACK : val_end])
-    test_dataset = ETTH1Dataset(normalized[val_end - LOOKBACK :])
+    # ===== 进阶练习：原来的手写时间边界（当前不执行） =====
+    # train_end = int(len(raw) * 0.70)
+    # val_end = int(len(raw) * 0.85)
+    # train_raw = raw[:train_end]
+    # val_raw = raw[train_end:val_end]
+    # test_raw = raw[val_end:]
+    # test_times = timestamps[val_end:]
+
+    train_raw, temp_raw, _, temp_times = train_test_split(
+        raw,
+        timestamps,
+        train_size=0.70,
+        shuffle=False,
+    )
+    val_raw, test_raw, _, test_times = train_test_split(
+        temp_raw,
+        temp_times,
+        train_size=0.50,
+        shuffle=False,
+    )
+
+    # 时间序列必须按时间顺序划分，不能使用 shuffle 或 stratify。
+    mean = train_raw.mean(axis=0)
+    std = train_raw.std(axis=0)
+    std[std == 0] = 1.0
+    train_normalized = (train_raw - mean) / std
+    val_normalized = (val_raw - mean) / std
+    test_normalized = (test_raw - mean) / std
+
+    val_with_context = np.concatenate(
+        [train_normalized[-LOOKBACK:], val_normalized], axis=0
+    )
+    test_with_context = np.concatenate(
+        [val_normalized[-LOOKBACK:], test_normalized], axis=0
+    )
+    train_dataset = ETTH1Dataset(train_normalized)
+    val_dataset = ETTH1Dataset(val_with_context)
+    test_dataset = ETTH1Dataset(test_with_context)
     train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, BATCH_SIZE)
     test_loader = DataLoader(test_dataset, BATCH_SIZE)
-    return train_loader, val_loader, test_loader, timestamps[val_end:], mean, std
+    return train_loader, val_loader, test_loader, test_times, mean, std
 
 
 class TransformerForecaster(nn.Module):

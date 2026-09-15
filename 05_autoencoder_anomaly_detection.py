@@ -6,6 +6,8 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
@@ -52,27 +54,56 @@ def load_data():
 
 def build_dataloaders():
     features, labels = load_data()
-    rng = np.random.default_rng(SEED)
-    normal_indices = np.where(labels == 0)[0]
-    anomaly_indices = np.where(labels == 1)[0]
-    rng.shuffle(normal_indices)
-    rng.shuffle(anomaly_indices)
 
-    train_end = int(len(normal_indices) * 0.60)
-    val_end = int(len(normal_indices) * 0.80)
-    train_idx = normal_indices[:train_end]
-    val_idx = normal_indices[train_end:val_end]
-    test_idx = np.concatenate([normal_indices[val_end:], anomaly_indices])
-    rng.shuffle(test_idx)
+    # ===== 进阶练习：原来的手写异常检测划分（当前不执行） =====
+    # rng = np.random.default_rng(SEED)
+    # normal_indices = np.where(labels == 0)[0]
+    # anomaly_indices = np.where(labels == 1)[0]
+    # rng.shuffle(normal_indices)
+    # rng.shuffle(anomaly_indices)
+    # train_end = int(len(normal_indices) * 0.60)
+    # val_end = int(len(normal_indices) * 0.80)
+    # train_idx = normal_indices[:train_end]
+    # val_idx = normal_indices[train_end:val_end]
+    # test_idx = np.concatenate([normal_indices[val_end:], anomaly_indices])
+    # rng.shuffle(test_idx)
 
-    mean = features[train_idx].mean(axis=0)
-    std = features[train_idx].std(axis=0)
+    normal_features = features[labels == 0]
+    normal_labels = labels[labels == 0]
+    anomaly_features = features[labels == 1]
+    anomaly_labels = labels[labels == 1]
+
+    # Autoencoder 只用正常样本训练和确定阈值；异常样本全部留到测试集。
+    train_features, temp_features, train_labels, temp_labels = train_test_split(
+        normal_features,
+        normal_labels,
+        train_size=0.60,
+        random_state=SEED,
+    )
+    val_features, normal_test_features, val_labels, normal_test_labels = train_test_split(
+        temp_features,
+        temp_labels,
+        train_size=0.50,
+        random_state=SEED,
+    )
+    test_features = np.concatenate([normal_test_features, anomaly_features], axis=0)
+    test_labels = np.concatenate([normal_test_labels, anomaly_labels], axis=0)
+    test_features, test_labels = shuffle(
+        test_features,
+        test_labels,
+        random_state=SEED,
+    )
+
+    mean = train_features.mean(axis=0)
+    std = train_features.std(axis=0)
     std[std == 0] = 1.0
-    features = (features - mean) / std
+    train_features = (train_features - mean) / std
+    val_features = (val_features - mean) / std
+    test_features = (test_features - mean) / std
 
-    train_dataset = BreastCancerDataset(features[train_idx], labels[train_idx])
-    val_dataset = BreastCancerDataset(features[val_idx], labels[val_idx])
-    test_dataset = BreastCancerDataset(features[test_idx], labels[test_idx])
+    train_dataset = BreastCancerDataset(train_features, train_labels)
+    val_dataset = BreastCancerDataset(val_features, val_labels)
+    test_dataset = BreastCancerDataset(test_features, test_labels)
     train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, BATCH_SIZE)
     test_loader = DataLoader(test_dataset, BATCH_SIZE)

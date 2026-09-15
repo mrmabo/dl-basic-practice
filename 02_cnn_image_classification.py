@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
@@ -86,14 +87,23 @@ def build_dataloaders():
     test_images = read_idx_images(paths["test_images"])
     test_labels = read_idx_labels(paths["test_labels"])
 
-    rng = np.random.default_rng(SEED)
-    indices = rng.permutation(len(all_train_labels))
-    val_indices = indices[:5000]
-    train_indices = indices[5000:]
-    train_images = all_train_images[train_indices]
-    train_labels = all_train_labels[train_indices]
-    val_images = all_train_images[val_indices]
-    val_labels = all_train_labels[val_indices]
+    # ===== 进阶练习：原来的手写随机划分（当前不执行） =====
+    # rng = np.random.default_rng(SEED)
+    # indices = rng.permutation(len(all_train_labels))
+    # val_indices = indices[:5000]
+    # train_indices = indices[5000:]
+    # train_images = all_train_images[train_indices]
+    # train_labels = all_train_labels[train_indices]
+    # val_images = all_train_images[val_indices]
+    # val_labels = all_train_labels[val_indices]
+
+    train_images, val_images, train_labels, val_labels = train_test_split(
+        all_train_images,
+        all_train_labels,
+        test_size=5000,
+        random_state=SEED,
+        stratify=all_train_labels,
+    )
 
     train_float = train_images.astype(np.float32) / 255.0
     mean = float(train_float.mean())

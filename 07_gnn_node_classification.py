@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.model_selection import train_test_split
 from torch import nn
 
 SEED = 42
@@ -26,18 +27,51 @@ def set_seed():
         torch.cuda.manual_seed_all(SEED)
 
 
-def stratified_masks(labels, train_per_class=20, val_per_class=30):
-    rng = np.random.default_rng(SEED)
+# ===== 进阶练习：原来的手写每类节点划分（当前不执行） =====
+# def stratified_masks(labels, train_per_class=20, val_per_class=30):
+#     rng = np.random.default_rng(SEED)
+#     train_mask = torch.zeros(len(labels), dtype=torch.bool)
+#     val_mask = torch.zeros(len(labels), dtype=torch.bool)
+#     test_mask = torch.zeros(len(labels), dtype=torch.bool)
+#
+#     for label in np.unique(labels):
+#         indices = np.where(labels == label)[0]
+#         rng.shuffle(indices)
+#         train_mask[indices[:train_per_class]] = True
+#         val_mask[indices[train_per_class : train_per_class + val_per_class]] = True
+#         test_mask[indices[train_per_class + val_per_class :]] = True
+#     return train_mask, val_mask, test_mask
+
+
+def build_masks(labels):
+    """每类划分 20 个训练节点、30 个验证节点，其余用于测试。"""
+    train_parts, val_parts, test_parts = [], [], []
+    for label in np.unique(labels):
+        class_indices = np.where(labels == label)[0]
+        selected_indices, class_test_indices = train_test_split(
+            class_indices,
+            train_size=50,
+            random_state=SEED,
+        )
+        class_train_indices, class_val_indices = train_test_split(
+            selected_indices,
+            train_size=20,
+            random_state=SEED,
+        )
+        train_parts.append(class_train_indices)
+        val_parts.append(class_val_indices)
+        test_parts.append(class_test_indices)
+
+    train_indices = np.concatenate(train_parts)
+    val_indices = np.concatenate(val_parts)
+    test_indices = np.concatenate(test_parts)
+
     train_mask = torch.zeros(len(labels), dtype=torch.bool)
     val_mask = torch.zeros(len(labels), dtype=torch.bool)
     test_mask = torch.zeros(len(labels), dtype=torch.bool)
-
-    for label in np.unique(labels):
-        indices = np.where(labels == label)[0]
-        rng.shuffle(indices)
-        train_mask[indices[:train_per_class]] = True
-        val_mask[indices[train_per_class : train_per_class + val_per_class]] = True
-        test_mask[indices[train_per_class + val_per_class :]] = True
+    train_mask[train_indices] = True
+    val_mask[val_indices] = True
+    test_mask[test_indices] = True
     return train_mask, val_mask, test_mask
 
 
@@ -93,7 +127,7 @@ def load_cora():
         adjacency.indices(), normalized_values, adjacency.size()
     ).coalesce()
 
-    train_mask, val_mask, test_mask = stratified_masks(labels)
+    train_mask, val_mask, test_mask = build_masks(labels)
     return (
         torch.tensor(features, dtype=torch.float32),
         normalized_adjacency,

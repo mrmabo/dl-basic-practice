@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
@@ -40,24 +41,29 @@ class WineDataset(Dataset):
         return self.features[index], self.labels[index]
 
 
-def stratified_split(labels, train_ratio=0.6, val_ratio=0.2):
-    """按类别划分索引，避免小数据集的某个集合缺少某一类别。"""
-    rng = np.random.default_rng(SEED)
-    train_indices, val_indices, test_indices = [], [], []
-
-    for label in np.unique(labels):
-        class_indices = np.where(labels == label)[0]
-        rng.shuffle(class_indices)
-        train_end = int(len(class_indices) * train_ratio)
-        val_end = train_end + int(len(class_indices) * val_ratio)
-        train_indices.extend(class_indices[:train_end])
-        val_indices.extend(class_indices[train_end:val_end])
-        test_indices.extend(class_indices[val_end:])
-
-    rng.shuffle(train_indices)
-    rng.shuffle(val_indices)
-    rng.shuffle(test_indices)
-    return np.array(train_indices), np.array(val_indices), np.array(test_indices)
+# ===== 进阶练习：原来的手写分层划分（当前不执行） =====
+# def stratified_split(labels, train_ratio=0.6, val_ratio=0.2):
+#     """按类别划分索引，避免小数据集的某个集合缺少某一类别。"""
+#     rng = np.random.default_rng(SEED)
+#     train_indices, val_indices, test_indices = [], [], []
+#
+#     for label in np.unique(labels):
+#         class_indices = np.where(labels == label)[0]
+#         rng.shuffle(class_indices)
+#         train_end = int(len(class_indices) * train_ratio)
+#         val_end = train_end + int(len(class_indices) * val_ratio)
+#         train_indices.extend(class_indices[:train_end])
+#         val_indices.extend(class_indices[train_end:val_end])
+#         test_indices.extend(class_indices[val_end:])
+#
+#     rng.shuffle(train_indices)
+#     rng.shuffle(val_indices)
+#     rng.shuffle(test_indices)
+#     return (
+#         np.array(train_indices),
+#         np.array(val_indices),
+#         np.array(test_indices),
+#     )
 
 
 def build_dataloaders():
@@ -70,17 +76,35 @@ def build_dataloaders():
     raw = np.loadtxt(DATA_PATH, delimiter=",", dtype=np.float32)
     labels = raw[:, 0].astype(np.int64) - 1
     features = raw[:, 1:]
-    train_idx, val_idx, test_idx = stratified_split(labels)
+
+    # 先划分出 60% 训练集，再把剩余 40% 平分为验证集和测试集。
+    # stratify 保证三个集合中的类别比例尽量与完整数据一致。
+    train_features, temp_features, train_labels, temp_labels = train_test_split(
+        features,
+        labels,
+        train_size=0.60,
+        random_state=SEED,
+        stratify=labels,
+    )
+    val_features, test_features, val_labels, test_labels = train_test_split(
+        temp_features,
+        temp_labels,
+        train_size=0.50,
+        random_state=SEED,
+        stratify=temp_labels,
+    )
 
     # 只使用训练集统计量标准化，避免验证集和测试集信息泄漏。
-    mean = features[train_idx].mean(axis=0)
-    std = features[train_idx].std(axis=0)
+    mean = train_features.mean(axis=0)
+    std = train_features.std(axis=0)
     std[std == 0] = 1.0
-    features = (features - mean) / std
+    train_features = (train_features - mean) / std
+    val_features = (val_features - mean) / std
+    test_features = (test_features - mean) / std
 
-    train_dataset = WineDataset(features[train_idx], labels[train_idx])
-    val_dataset = WineDataset(features[val_idx], labels[val_idx])
-    test_dataset = WineDataset(features[test_idx], labels[test_idx])
+    train_dataset = WineDataset(train_features, train_labels)
+    val_dataset = WineDataset(val_features, val_labels)
+    test_dataset = WineDataset(test_features, test_labels)
 
     train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, BATCH_SIZE)

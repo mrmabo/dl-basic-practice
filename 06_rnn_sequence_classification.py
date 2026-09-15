@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
@@ -47,18 +48,19 @@ def load_ucr_file(path):
     return features, labels
 
 
-def stratified_train_val_split(labels, val_ratio=0.2):
-    rng = np.random.default_rng(SEED)
-    train_indices, val_indices = [], []
-    for label in np.unique(labels):
-        indices = np.where(labels == label)[0]
-        rng.shuffle(indices)
-        val_count = max(1, int(len(indices) * val_ratio))
-        val_indices.extend(indices[:val_count])
-        train_indices.extend(indices[val_count:])
-    rng.shuffle(train_indices)
-    rng.shuffle(val_indices)
-    return np.array(train_indices), np.array(val_indices)
+# ===== 进阶练习：原来的手写分层划分（当前不执行） =====
+# def stratified_train_val_split(labels, val_ratio=0.2):
+#     rng = np.random.default_rng(SEED)
+#     train_indices, val_indices = [], []
+#     for label in np.unique(labels):
+#         indices = np.where(labels == label)[0]
+#         rng.shuffle(indices)
+#         val_count = max(1, int(len(indices) * val_ratio))
+#         val_indices.extend(indices[:val_count])
+#         train_indices.extend(indices[val_count:])
+#     rng.shuffle(train_indices)
+#     rng.shuffle(val_indices)
+#     return np.array(train_indices), np.array(val_indices)
 
 
 def build_dataloaders():
@@ -69,17 +71,23 @@ def build_dataloaders():
         )
     all_train_x, all_train_y = load_ucr_file(TRAIN_PATH)
     test_x, test_y = load_ucr_file(TEST_PATH)
-    train_idx, val_idx = stratified_train_val_split(all_train_y)
+    train_x, val_x, train_y, val_y = train_test_split(
+        all_train_x,
+        all_train_y,
+        test_size=0.20,
+        random_state=SEED,
+        stratify=all_train_y,
+    )
 
-    mean = all_train_x[train_idx].mean(axis=0)
-    std = all_train_x[train_idx].std(axis=0)
+    mean = train_x.mean(axis=0)
+    std = train_x.std(axis=0)
     std[std == 0] = 1.0
-    train_x = (all_train_x[train_idx] - mean) / std
-    val_x = (all_train_x[val_idx] - mean) / std
+    train_x = (train_x - mean) / std
+    val_x = (val_x - mean) / std
     test_x = (test_x - mean) / std
 
-    train_dataset = SequenceDataset(train_x, all_train_y[train_idx])
-    val_dataset = SequenceDataset(val_x, all_train_y[val_idx])
+    train_dataset = SequenceDataset(train_x, train_y)
+    val_dataset = SequenceDataset(val_x, val_y)
     test_dataset = SequenceDataset(test_x, test_y)
     train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, BATCH_SIZE)

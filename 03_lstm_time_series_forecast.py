@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
@@ -57,20 +58,45 @@ class WindowDataset(Dataset):
 
 def build_dataloaders():
     months, raw = load_series()
-    train_end = int(len(raw) * 0.70)
-    val_end = int(len(raw) * 0.85)
 
-    mean = raw[:train_end].mean()
-    std = raw[:train_end].std()
-    normalized = (raw - mean) / std
+    # ===== 进阶练习：原来的手写时间边界（当前不执行） =====
+    # train_end = int(len(raw) * 0.70)
+    # val_end = int(len(raw) * 0.85)
+    # train_raw = raw[:train_end]
+    # val_raw = raw[train_end:val_end]
+    # test_raw = raw[val_end:]
+    # test_months = months[val_end:]
 
-    train_dataset = WindowDataset(normalized[:train_end])
-    val_dataset = WindowDataset(normalized[train_end - LOOKBACK : val_end])
-    test_dataset = WindowDataset(normalized[val_end - LOOKBACK :])
+    train_raw, temp_raw, _, temp_months = train_test_split(
+        raw,
+        months,
+        train_size=0.70,
+        shuffle=False,
+    )
+    val_raw, test_raw, _, test_months = train_test_split(
+        temp_raw,
+        temp_months,
+        train_size=0.50,
+        shuffle=False,
+    )
+
+    # 时间序列不能随机打乱；标准化统计量也只能来自较早的训练区间。
+    mean = train_raw.mean()
+    std = train_raw.std()
+    train_normalized = (train_raw - mean) / std
+    val_normalized = (val_raw - mean) / std
+    test_normalized = (test_raw - mean) / std
+
+    # 验证集和测试集各补上前一段的 LOOKBACK 个历史点来构造第一个窗口。
+    val_with_context = np.concatenate([train_normalized[-LOOKBACK:], val_normalized])
+    test_with_context = np.concatenate([val_normalized[-LOOKBACK:], test_normalized])
+    train_dataset = WindowDataset(train_normalized)
+    val_dataset = WindowDataset(val_with_context)
+    test_dataset = WindowDataset(test_with_context)
     train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, BATCH_SIZE)
     test_loader = DataLoader(test_dataset, BATCH_SIZE)
-    return train_loader, val_loader, test_loader, months[val_end:], mean, std
+    return train_loader, val_loader, test_loader, test_months, mean, std
 
 
 class LSTMForecaster(nn.Module):
