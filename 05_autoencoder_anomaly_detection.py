@@ -42,7 +42,7 @@ def load_data():
     if not DATA_PATH.exists():
         raise FileNotFoundError(
             f"没有找到 {DATA_PATH}\n"
-            "请先运行：python download_05_autoencoder_breast_cancer.py"
+            "请先运行：python download_data/download_05_autoencoder_breast_cancer.py"
         )
     raw = np.genfromtxt(DATA_PATH, delimiter=",", dtype=str)
     features = raw[:, 2:].astype(np.float32)
