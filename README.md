@@ -49,6 +49,31 @@ python 07_gnn_node_classification.py
 
 其中 GNN 示例用纯 PyTorch 实现 GCN，不需要额外安装 `torch_geometric`。
 
+## 空白重写练习模板
+
+学习完一个完整流程后，新建一个空白 Python 文件，只保留下面这些标题，然后按照顺序独立补全代码：
+
+```python
+# imports
+# config
+# dataloader
+# model
+# loss and optimizer
+# training
+# evaluation
+# checkpoint
+# inference
+```
+
+练习时先不要查看对应的完整脚本。写完并运行后，再与标准代码对照，重点检查：
+
+- 是否完成训练集、验证集和测试集的划分
+- 输入、标签以及模型输出的 tensor shape 是否正确
+- 训练阶段是否包含清零梯度、前向传播、计算损失、反向传播和更新参数
+- 验证和推理阶段是否使用 `model.eval()` 与 `torch.no_grad()`
+- 是否能够保存并重新加载验证集表现最好的模型
+- 是否输出最终测试指标和少量预测结果
+
 ## 下载对应的公开真实数据
 
 训练脚本默认使用合成数据，确保无需联网也能练习完整流程。下面每个下载脚本会把真实数据保存到 `data/`，且重复运行时不会重复下载压缩包：
