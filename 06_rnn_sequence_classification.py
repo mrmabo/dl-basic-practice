@@ -65,7 +65,7 @@ def build_dataloaders():
     if not TRAIN_PATH.exists() or not TEST_PATH.exists():
         raise FileNotFoundError(
             f"没有找到 {TRAIN_PATH} 或 {TEST_PATH}\n"
-            "请先运行：python download_06_rnn_synthetic_control.py"
+            "请先运行：python download_data/download_06_rnn_synthetic_control.py"
         )
     all_train_x, all_train_y = load_ucr_file(TRAIN_PATH)
     test_x, test_y = load_ucr_file(TEST_PATH)
