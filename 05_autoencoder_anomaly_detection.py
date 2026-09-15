@@ -1,106 +1,160 @@
-"""完整流程 5：Autoencoder 异常检测（仅用正常训练集学习重构）。"""
+"""完整流程 5：使用 WDBC 公开数据训练 Autoencoder 异常检测模型。"""
 
+import os
 import random
+from pathlib import Path
+
 import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-SEED, BATCH_SIZE, EPOCHS = 42, 64, 12
+SEED = 42
+BATCH_SIZE = 32
+EPOCHS = int(os.getenv("EPOCHS", "50"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+ROOT = Path(__file__).resolve().parent
+DATA_PATH = ROOT / "data" / "autoencoder_breast_cancer" / "wdbc.data"
+CHECKPOINT_PATH = ROOT / "best_autoencoder.pt"
 
 
 def set_seed():
     random.seed(SEED)
     np.random.seed(SEED)
     torch.manual_seed(SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(SEED)
 
 
-class AnomalyDataset(Dataset):
-    def __init__(self, n, anomaly_ratio=0.0, seed=SEED):
-        g = torch.Generator().manual_seed(seed)
-        self.y = (torch.rand(n, generator=g) < anomaly_ratio).long()
-        normal = torch.randn(n, 12, generator=g) * 0.5
-        anomaly = torch.randn(n, 12, generator=g) * 1.5 + 3
-        self.x = torch.where(self.y[:, None].bool(), anomaly, normal)
+class BreastCancerDataset(Dataset):
+    def __init__(self, features, labels):
+        self.features = torch.tensor(features, dtype=torch.float32)
+        self.labels = torch.tensor(labels, dtype=torch.long)
 
     def __len__(self):
-        return len(self.y)
+        return len(self.labels)
 
-    def __getitem__(self, i):
-        return self.x[i], self.y[i]
+    def __getitem__(self, index):
+        return self.features[index], self.labels[index]
+
+
+def load_data():
+    if not DATA_PATH.exists():
+        raise FileNotFoundError(
+            f"没有找到 {DATA_PATH}\n"
+            "请先运行：python download_05_autoencoder_breast_cancer.py"
+        )
+    raw = np.genfromtxt(DATA_PATH, delimiter=",", dtype=str)
+    features = raw[:, 2:].astype(np.float32)
+    labels = (raw[:, 1] == "M").astype(np.int64)  # benign=0, malignant=1
+    return features, labels
+
+
+def build_dataloaders():
+    features, labels = load_data()
+    rng = np.random.default_rng(SEED)
+    normal_indices = np.where(labels == 0)[0]
+    anomaly_indices = np.where(labels == 1)[0]
+    rng.shuffle(normal_indices)
+    rng.shuffle(anomaly_indices)
+
+    train_end = int(len(normal_indices) * 0.60)
+    val_end = int(len(normal_indices) * 0.80)
+    train_idx = normal_indices[:train_end]
+    val_idx = normal_indices[train_end:val_end]
+    test_idx = np.concatenate([normal_indices[val_end:], anomaly_indices])
+    rng.shuffle(test_idx)
+
+    mean = features[train_idx].mean(axis=0)
+    std = features[train_idx].std(axis=0)
+    std[std == 0] = 1.0
+    features = (features - mean) / std
+
+    train_dataset = BreastCancerDataset(features[train_idx], labels[train_idx])
+    val_dataset = BreastCancerDataset(features[val_idx], labels[val_idx])
+    test_dataset = BreastCancerDataset(features[test_idx], labels[test_idx])
+    train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataset, BATCH_SIZE)
+    test_loader = DataLoader(test_dataset, BATCH_SIZE)
+    return train_loader, val_loader, test_loader
 
 
 class Autoencoder(nn.Module):
     def __init__(self):
         super().__init__()
-        self.encoder = nn.Sequential(nn.Linear(12, 8), nn.ReLU(), nn.Linear(8, 3))
-        self.decoder = nn.Sequential(nn.Linear(3, 8), nn.ReLU(), nn.Linear(8, 12))
+        self.encoder = nn.Sequential(
+            nn.Linear(30, 16), nn.ReLU(), nn.Linear(16, 8), nn.ReLU()
+        )
+        self.decoder = nn.Sequential(nn.Linear(8, 16), nn.ReLU(), nn.Linear(16, 30))
 
-    def forward(self, x):
-        return self.decoder(self.encoder(x))  # [B,12] -> [B,3] -> [B,12]
+    def forward(self, features):
+        return self.decoder(self.encoder(features))  # [B, 30] -> [B, 8] -> [B, 30]
 
 
-def scores(model, loader):
+def reconstruction_scores(model, loader):
     model.eval()
-    all_scores = []
-    all_labels = []
+    all_scores, all_labels = [], []
     with torch.no_grad():
-        for x, y in loader:
-            x = x.to(DEVICE)
-            all_scores.append(((model(x) - x) ** 2).mean(1).cpu())
-            all_labels.append(y)
+        for features, labels in loader:
+            features = features.to(DEVICE)
+            scores = ((model(features) - features) ** 2).mean(dim=1)
+            all_scores.append(scores.cpu())
+            all_labels.append(labels)
     return torch.cat(all_scores), torch.cat(all_labels)
 
 
 def main():
     set_seed()
-    train = AnomalyDataset(1800, 0, 42)
-    val = AnomalyDataset(500, 0, 43)
-    test = AnomalyDataset(800, 0.25, 44)
-    train_loader = DataLoader(train, BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val, BATCH_SIZE)
-    test_loader = DataLoader(test, BATCH_SIZE)
+    train_loader, val_loader, test_loader = build_dataloaders()
     model = Autoencoder().to(DEVICE)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    best = float("inf")
+
+    best_val_loss = float("inf")
     for epoch in range(1, EPOCHS + 1):
         model.train()
-        total = 0
-        for x, _ in train_loader:
-            x = x.to(DEVICE)
+        train_loss = 0.0
+        for features, _ in train_loader:
+            features = features.to(DEVICE)
             optimizer.zero_grad()
-            loss = loss_fn(model(x), x)
+            loss = loss_fn(model(features), features)
             loss.backward()
             optimizer.step()
-            total += loss.item() * x.size(0)
-        val_scores, _ = scores(model, val_loader)
+            train_loss += loss.item() * features.size(0)
+
+        val_scores, _ = reconstruction_scores(model, val_loader)
         val_loss = val_scores.mean().item()
-        if val_loss < best:
-            best = val_loss
-            torch.save(model.state_dict(), "best_autoencoder.pt")
-        print(
-            f"epoch={epoch:02d} train_mse={total/len(train):.5f} val_mse={val_loss:.5f}"
-        )
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            torch.save(model.state_dict(), CHECKPOINT_PATH)
+        if epoch == 1 or epoch % 5 == 0:
+            print(
+                f"epoch={epoch:02d} "
+                f"train_mse={train_loss / len(train_loader.dataset):.5f} "
+                f"val_mse={val_loss:.5f}"
+            )
+
     model.load_state_dict(
-        torch.load("best_autoencoder.pt", map_location=DEVICE, weights_only=True)
+        torch.load(CHECKPOINT_PATH, map_location=DEVICE, weights_only=True)
     )
-    val_scores, _ = scores(model, val_loader)
-    threshold = torch.quantile(val_scores, 0.99)  # 99%正常样本应低于阈值
-    test_scores, y = scores(model, test_loader)
-    pred = (test_scores > threshold).long()
-    tp = ((pred == 1) & (y == 1)).sum()
-    fp = ((pred == 1) & (y == 0)).sum()
-    fn = ((pred == 0) & (y == 1)).sum()
-    precision = tp / (tp + fp).clamp_min(1)
-    recall = tp / (tp + fn).clamp_min(1)
-    accuracy = (pred == y).float().mean()
+    val_scores, _ = reconstruction_scores(model, val_loader)
+    threshold = torch.quantile(val_scores, 0.95)
+    test_scores, labels = reconstruction_scores(model, test_loader)
+    predictions = (test_scores > threshold).long()
+
+    true_positive = ((predictions == 1) & (labels == 1)).sum()
+    false_positive = ((predictions == 1) & (labels == 0)).sum()
+    false_negative = ((predictions == 0) & (labels == 1)).sum()
+    accuracy = (predictions == labels).float().mean()
+    precision = true_positive / (true_positive + false_positive).clamp_min(1)
+    recall = true_positive / (true_positive + false_negative).clamp_min(1)
     print(
-        f"threshold={threshold:.5f} accuracy={accuracy:.3f} precision={precision:.3f} recall={recall:.3f}"
+        f"threshold={threshold:.5f} accuracy={accuracy:.3f} "
+        f"precision={precision:.3f} recall={recall:.3f}"
     )
     print("scores:", test_scores[:10].round(decimals=3).tolist())
-    print("pred:", pred[:10].tolist(), "true:", y[:10].tolist())
+    print("pred:", predictions[:10].tolist())
+    print("true:", labels[:10].tolist())
 
 
 if __name__ == "__main__":
