@@ -24,11 +24,11 @@ conda activate dl-basic-practice
 python -m pip install -r requirements.txt
 ```
 
-验证 Python、PyTorch、NumPy、scikit-learn 和 CUDA 状态：
+验证 Python、PyTorch、torchvision、NumPy、scikit-learn 和 CUDA 状态：
 
 ```bash
 python --version
-python -c "import torch, numpy, sklearn; print('PyTorch:', torch.__version__); print('NumPy:', numpy.__version__); print('scikit-learn:', sklearn.__version__); print('CUDA available:', torch.cuda.is_available())"
+python -c "import torch, torchvision, numpy, sklearn; print('PyTorch:', torch.__version__); print('torchvision:', torchvision.__version__); print('NumPy:', numpy.__version__); print('scikit-learn:', sklearn.__version__); print('CUDA available:', torch.cuda.is_available())"
 ```
 
 如果最后显示 `CUDA available: True`，说明当前 PyTorch 可以使用 NVIDIA GPU；显示 `False` 时仍然可以使用 CPU 运行这些练习。
@@ -47,7 +47,7 @@ python download_data/download_06_rnn_synthetic_control.py
 python download_data/download_07_gnn_cora.py
 ```
 
-所有数据都会保存在仓库的 `data/` 目录中，该目录不会提交到 GitHub。
+所有数据都会保存在仓库的 `data/` 目录中，该目录不会提交到 GitHub。\n\n其中MNIST由下载脚本调用`torchvision.datasets.MNIST(download=True)`保存；CNN训练脚本使用`download=False`读取，不再手动解析IDX文件。
 
 ## 运行训练流程
 
