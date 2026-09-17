@@ -1,27 +1,29 @@
-"""下载公开 MNIST 原始 IDX 文件：适合 CNN 图像分类。"""
+"""使用torchvision下载MNIST公开数据，供CNN训练脚本读取。"""
 
 from pathlib import Path
-from urllib.request import urlretrieve
 
-BASE = "https://storage.googleapis.com/cvdf-datasets/mnist/"
-FILES = [
-    "train-images-idx3-ubyte.gz",
-    "train-labels-idx1-ubyte.gz",
-    "t10k-images-idx3-ubyte.gz",
-    "t10k-labels-idx1-ubyte.gz",
-]
+from torchvision.datasets import MNIST
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "cnn_mnist"
 
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for name in FILES:
-        target = OUT / name
-        if not target.exists():
-            print("Downloading", name)
-            urlretrieve(BASE + name, target)
-    print("Ready:", OUT.resolve(), "; 已下载四个 MNIST gzip 压缩的 IDX 原始文件")
+
+    MNIST(
+        root=OUT,
+        train=True,
+        download=True,
+    )
+    MNIST(
+        root=OUT,
+        train=False,
+        download=True,
+    )
+
+    print("Ready:", OUT.resolve())
+    print("训练集和测试集已保存为torchvision MNIST目录结构。")
 
 
 if __name__ == "__main__":
