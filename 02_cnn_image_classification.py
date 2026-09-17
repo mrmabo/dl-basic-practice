@@ -1,16 +1,16 @@
-"""完整流程 2：使用 MNIST 公开数据训练 CNN 图像分类模型。"""
+"""完整流程 2：使用 torchvision MNIST 公开数据训练 CNN 图像分类模型。"""
 
-import gzip
 import os
 import random
-import struct
 from pathlib import Path
 
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 from torch import nn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Subset
+from torchvision.datasets import MNIST
+from torchvision.transforms import Compose, Normalize, ToTensor
 
 SEED = 42
 BATCH_SIZE = 128
@@ -31,90 +31,68 @@ def set_seed():
         torch.cuda.manual_seed_all(SEED)
 
 
-def read_idx_images(path):
-    with gzip.open(path, "rb") as file:
-        magic, count, rows, columns = struct.unpack(">IIII", file.read(16))
-        if magic != 2051:
-            raise ValueError(f"{path.name} 不是有效的 MNIST 图像文件")
-        data = np.frombuffer(file.read(), dtype=np.uint8)
-    return data.reshape(count, rows, columns).copy()
-
-
-def read_idx_labels(path):
-    with gzip.open(path, "rb") as file:
-        magic, count = struct.unpack(">II", file.read(8))
-        if magic != 2049:
-            raise ValueError(f"{path.name} 不是有效的 MNIST 标签文件")
-        labels = np.frombuffer(file.read(), dtype=np.uint8)
-    if len(labels) != count:
-        raise ValueError(f"{path.name} 中的标签数量不正确")
-    return labels.copy()
-
-
-class MNISTDataset(Dataset):
-    def __init__(self, images, labels, mean, std):
-        self.images = torch.from_numpy(images)
-        self.labels = torch.from_numpy(labels.astype(np.int64))
-        self.mean = mean
-        self.std = std
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __getitem__(self, index):
-        image = self.images[index].float().unsqueeze(0) / 255.0
-        image = (image - self.mean) / self.std
-        return image, self.labels[index]
-
-
 def build_dataloaders():
-    paths = {
-        "train_images": DATA_DIR / "train-images-idx3-ubyte.gz",
-        "train_labels": DATA_DIR / "train-labels-idx1-ubyte.gz",
-        "test_images": DATA_DIR / "t10k-images-idx3-ubyte.gz",
-        "test_labels": DATA_DIR / "t10k-labels-idx1-ubyte.gz",
-    }
-    missing = [str(path) for path in paths.values() if not path.exists()]
-    if missing:
-        raise FileNotFoundError(
-            "缺少 MNIST 文件：\n"
-            + "\n".join(missing)
-            + "\n请先运行：python download_data/download_02_cnn_mnist.py"
-        )
-
-    all_train_images = read_idx_images(paths["train_images"])
-    all_train_labels = read_idx_labels(paths["train_labels"])
-    test_images = read_idx_images(paths["test_images"])
-    test_labels = read_idx_labels(paths["test_labels"])
-
-    # ===== 进阶练习：原来的手写随机划分（当前不执行） =====
-    # rng = np.random.default_rng(SEED)
-    # indices = rng.permutation(len(all_train_labels))
-    # val_indices = indices[:5000]
-    # train_indices = indices[5000:]
-    # train_images = all_train_images[train_indices]
-    # train_labels = all_train_labels[train_indices]
-    # val_images = all_train_images[val_indices]
-    # val_labels = all_train_labels[val_indices]
-
-    train_images, val_images, train_labels, val_labels = train_test_split(
-        all_train_images,
-        all_train_labels,
-        test_size=5000,
-        random_state=SEED,
-        stratify=all_train_labels,
+    transform = Compose(
+        [
+            ToTensor(),
+            # 0.1307和0.3081来自MNIST官方训练集，不使用测试集统计量。
+            Normalize(mean=(0.1307,), std=(0.3081,)),
+        ]
     )
 
-    train_float = train_images.astype(np.float32) / 255.0
-    mean = float(train_float.mean())
-    std = float(train_float.std())
+    try:
+        full_train_dataset = MNIST(
+            root=DATA_DIR,
+            train=True,
+            transform=transform,
+            download=False,
+        )
+        test_dataset = MNIST(
+            root=DATA_DIR,
+            train=False,
+            transform=transform,
+            download=False,
+        )
+    except RuntimeError as error:
+        raise FileNotFoundError(
+            "没有找到torchvision格式的MNIST数据。\n"
+            "请先运行：python download_data/download_02_cnn_mnist.py"
+        ) from error
 
-    train_dataset = MNISTDataset(train_images, train_labels, mean, std)
-    val_dataset = MNISTDataset(val_images, val_labels, mean, std)
-    test_dataset = MNISTDataset(test_images, test_labels, mean, std)
-    train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, BATCH_SIZE)
-    test_loader = DataLoader(test_dataset, BATCH_SIZE)
+    all_indices = np.arange(len(full_train_dataset))
+    all_labels = full_train_dataset.targets.numpy()
+
+    # ===== 进阶练习：手写随机划分（当前不执行） =====
+    # rng = np.random.default_rng(SEED)
+    # shuffled_indices = rng.permutation(all_indices)
+    # val_indices = shuffled_indices[:5000]
+    # train_indices = shuffled_indices[5000:]
+
+    train_indices, val_indices = train_test_split(
+        all_indices,
+        test_size=5000,
+        random_state=SEED,
+        stratify=all_labels,
+    )
+
+    train_dataset = Subset(full_train_dataset, train_indices)
+    val_dataset = Subset(full_train_dataset, val_indices)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+    )
     return train_loader, val_loader, test_loader
 
 
@@ -145,21 +123,25 @@ def evaluate(model, loader, loss_fn):
     total_loss = 0.0
     correct = 0
     total = 0
+
     with torch.no_grad():
         for images, labels in loader:
             images = images.to(DEVICE)
             labels = labels.to(DEVICE)
             logits = model(images)
             loss = loss_fn(logits, labels)
+
             total_loss += loss.item() * images.size(0)
             correct += (logits.argmax(dim=1) == labels).sum().item()
             total += images.size(0)
+
     return total_loss / total, correct / total
 
 
 def main():
     set_seed()
     train_loader, val_loader, test_loader = build_dataloaders()
+
     model = CNN().to(DEVICE)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
@@ -168,19 +150,24 @@ def main():
     for epoch in range(1, EPOCHS + 1):
         model.train()
         train_loss = 0.0
+
         for images, labels in train_loader:
             images = images.to(DEVICE)
             labels = labels.to(DEVICE)
+
             optimizer.zero_grad()
-            loss = loss_fn(model(images), labels)
+            logits = model(images)
+            loss = loss_fn(logits, labels)
             loss.backward()
             optimizer.step()
+
             train_loss += loss.item() * images.size(0)
 
         val_loss, val_acc = evaluate(model, val_loader, loss_fn)
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             torch.save(model.state_dict(), CHECKPOINT_PATH)
+
         print(
             f"epoch={epoch:02d} "
             f"train_loss={train_loss / len(train_loader.dataset):.4f} "
@@ -197,6 +184,7 @@ def main():
     model.eval()
     with torch.no_grad():
         predictions = model(images[:8].to(DEVICE)).argmax(dim=1).cpu()
+
     print("pred:", predictions.tolist())
     print("true:", labels[:8].tolist())
 
