@@ -170,7 +170,7 @@ def main():
 
         print(
             f"epoch={epoch:02d} "
-            f"train_loss={train_loss / len(train_loader.dataset):.4f} "
+            f"train_loss={train_loss / len(train_loader.dataset):.4f} "  # type: ignore
             f"val_loss={val_loss:.4f} val_acc={val_acc:.3f}"
         )
 
