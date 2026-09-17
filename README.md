@@ -67,12 +67,12 @@ python 07_gnn_node_classification.py
 
 ## 数据集划分策略
 
-现阶段优先练习完整的深度学习流程，因此当前执行路径统一使用 scikit-learn 的 `train_test_split`。原来的手写划分代码仍以“进阶练习”注释块保留在各脚本中，当前不会执行；以后学习 split 原理时可以与 library method 逐行对照。
+现阶段优先练习完整的深度学习流程。表格分类、序列分类以及时间序列流程根据任务需要使用 scikit-learn 的 `train_test_split`；CNN + MNIST 使用 PyTorch 的 `torch.utils.data.random_split`，让图像分类示例保持更完整的 PyTorch 数据流程。
 
 | 脚本 | 划分方式 | 必须保留的规则 |
 |---|---|---|
 | `01_mlp_classification.py` | 两次 `train_test_split` 得到 60% / 20% / 20% | 使用 `stratify` 保持 Wine 三个类别的比例 |
-| `02_cnn_image_classification.py` | 从 MNIST 官方训练集划出 5,000 条验证数据 | 使用 `stratify`；官方测试集保持不变 |
+| `02_cnn_image_classification.py` | 使用 `random_split` 将 MNIST 官方训练集拆为 55,000 条训练数据和 5,000 条验证数据 | 使用固定 `torch.Generator` 保证拆分可复现；官方测试集保持不变 |
 | `03_lstm_time_series_forecast.py` | 两次 `train_test_split` 得到 70% / 15% / 15% | 必须设置 `shuffle=False`，保持时间顺序 |
 | `04_transformer_time_series_forecast.py` | 两次 `train_test_split` 得到 70% / 15% / 15% | 必须设置 `shuffle=False`，保持时间顺序 |
 | `05_autoencoder_anomaly_detection.py` | 正常样本划分为训练、验证和测试，异常样本放入测试集 | Autoencoder 的训练集和阈值验证集只包含正常样本 |
@@ -83,11 +83,11 @@ python 07_gnn_node_classification.py
 
 ### 为什么现阶段使用 library method
 
-当前第一目标是熟练掌握：数据进入 `Dataset` / `DataLoader`、模型前向传播、loss、反向传播、验证、checkpoint 和 inference。`train_test_split` 是成熟且经过充分测试的工具，直接使用它可以减少与当前训练目标无关的代码，也更接近真实项目。
+当前第一目标是熟练掌握：数据进入 `Dataset` / `DataLoader`、模型前向传播、loss、反向传播、验证、checkpoint 和 inference。`train_test_split` 和 `random_split` 都是成熟且经过充分测试的工具。小样本分类数据需要 `stratify` 时使用 `train_test_split`；MNIST 数据量大、类别较均衡，并且 CNN 流程使用 torchvision Dataset，因此使用 `random_split` 更简洁，也更便于理解 PyTorch 的数据流程。
 
 熟练以后完全可以阅读 library method 的实现，并自己写一个简化版本。建议顺序：
 
-1. 先熟练使用 `train_test_split` 的 `train_size`、`test_size`、`random_state`、`shuffle` 和 `stratify`。
+1. 先熟练使用 `train_test_split` 的 `train_size`、`test_size`、`random_state`、`shuffle` 和 `stratify`，同时掌握 `random_split` 的 `lengths` 和 `generator`。
 2. 使用 `inspect.getsource(train_test_split)` 查看入口实现，再继续阅读它调用的 `ShuffleSplit` 和 `StratifiedShuffleSplit`。
 3. 阅读每个脚本中保留的“进阶练习”注释代码，先复制到单独的练习文件中运行，再与当前 library method 做对照实验。
 4. 用相同 seed 检查结果可复现，并用类别计数验证 stratified split 是否保持了类别比例。
