@@ -6,9 +6,8 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from sklearn.model_selection import train_test_split
 from torch import nn
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, random_split
 from torchvision.datasets import MNIST
 from torchvision.transforms import Compose, Normalize, ToTensor
 
@@ -59,24 +58,16 @@ def build_dataloaders():
             "请先运行：python download_data/download_02_cnn_mnist.py"
         ) from error
 
-    all_indices = np.arange(len(full_train_dataset))
-    all_labels = full_train_dataset.targets.numpy()
+    val_size = 5_000
+    train_size = len(full_train_dataset) - val_size
 
-    # ===== 进阶练习：手写随机划分（当前不执行） =====
-    # rng = np.random.default_rng(SEED)
-    # shuffled_indices = rng.permutation(all_indices)
-    # val_indices = shuffled_indices[:5000]
-    # train_indices = shuffled_indices[5000:]
-
-    train_indices, val_indices = train_test_split(
-        all_indices,
-        test_size=5000,
-        random_state=SEED,
-        stratify=all_labels,
+    # 使用独立的Generator固定拆分结果，避免影响其他PyTorch随机操作。
+    split_generator = torch.Generator().manual_seed(SEED)
+    train_dataset, val_dataset = random_split(
+        full_train_dataset,
+        lengths=[train_size, val_size],
+        generator=split_generator,
     )
-
-    train_dataset = Subset(full_train_dataset, train_indices)
-    val_dataset = Subset(full_train_dataset, val_indices)
 
     train_loader = DataLoader(
         train_dataset,
