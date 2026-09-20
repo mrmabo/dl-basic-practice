@@ -1,4 +1,4 @@
-"""完整流程 4：使用 ETTh1 公开数据训练 Transformer 一步预测模型。"""
+"""完整流程 4：使用 ETTh1 训练 Transformer 多步、多目标预测模型。"""
 
 import csv
 import os
@@ -13,11 +13,13 @@ from torch.utils.data import DataLoader, Dataset
 
 SEED = 42
 LOOKBACK = 96
+HORIZON = 24
 BATCH_SIZE = 64
 EPOCHS = int(os.getenv("EPOCHS", "10"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 FEATURE_NAMES = ["HUFL", "HULL", "MUFL", "MULL", "LUFL", "LULL", "OT"]
-TARGET_INDEX = FEATURE_NAMES.index("OT")
+TARGET_NAMES = ["HUFL", "OT"]
+TARGET_INDICES = [FEATURE_NAMES.index(name) for name in TARGET_NAMES]
 ROOT = Path(__file__).resolve().parent
 DATA_PATH = ROOT / "data" / "transformer_etth1" / "ETTh1.csv"
 CHECKPOINT_PATH = ROOT / "best_transformer.pt"
@@ -46,16 +48,27 @@ def load_etth1():
 
 
 class ETTH1Dataset(Dataset):
-    def __init__(self, data):
+    def __init__(
+        self,
+        data,
+        lookback=LOOKBACK,
+        horizon=HORIZON,
+        target_indices=TARGET_INDICES,
+    ):
         self.data = torch.tensor(data, dtype=torch.float32)
+        self.lookback = lookback
+        self.horizon = horizon
+        self.target_indices = target_indices
 
     def __len__(self):
-        return len(self.data) - LOOKBACK
+        return len(self.data) - self.lookback - self.horizon + 1
 
     def __getitem__(self, index):
-        features = self.data[index : index + LOOKBACK]
-        target = self.data[index + LOOKBACK, TARGET_INDEX : TARGET_INDEX + 1]
-        return features, target  # [L, 7], [1]
+        forecast_start = index + self.lookback
+        forecast_end = forecast_start + self.horizon
+        features = self.data[index:forecast_start]
+        targets = self.data[forecast_start:forecast_end, self.target_indices]
+        return features, targets  # [lookback, 7], [horizon, num_targets]
 
 
 def build_dataloaders():
@@ -106,8 +119,18 @@ def build_dataloaders():
 
 
 class TransformerForecaster(nn.Module):
-    def __init__(self, input_features=7, d_model=32, nhead=4, num_layers=2):
+    def __init__(
+        self,
+        input_features=7,
+        d_model=32,
+        nhead=4,
+        num_layers=2,
+        horizon=HORIZON,
+        num_targets=len(TARGET_NAMES),
+    ):
         super().__init__()
+        self.horizon = horizon
+        self.num_targets = num_targets
         self.input_projection = nn.Linear(input_features, d_model)
         self.position = nn.Parameter(torch.randn(1, LOOKBACK, d_model) * 0.02)
         layer = nn.TransformerEncoderLayer(
@@ -118,12 +141,13 @@ class TransformerForecaster(nn.Module):
             batch_first=True,
         )
         self.encoder = nn.TransformerEncoder(layer, num_layers=num_layers)
-        self.head = nn.Linear(d_model, 1)
+        self.head = nn.Linear(d_model, horizon * num_targets)
 
     def forward(self, features):
         hidden = self.input_projection(features) + self.position[:, : features.size(1)]
         encoded = self.encoder(hidden)  # [B, L, 7] -> [B, L, 32]
-        return self.head(encoded[:, -1])  # [B, 1]
+        predictions = self.head(encoded[:, -1])
+        return predictions.reshape(-1, self.horizon, self.num_targets)
 
 
 def evaluate(model, loader, loss_fn):
@@ -176,11 +200,20 @@ def main():
     features, targets = next(iter(test_loader))
     model.eval()
     with torch.no_grad():
-        predictions = model(features[:5].to(DEVICE)).cpu().squeeze(1).numpy()
-    predictions = predictions * std[TARGET_INDEX] + mean[TARGET_INDEX]
-    actual = targets[:5].squeeze(1).numpy() * std[TARGET_INDEX] + mean[TARGET_INDEX]
-    for timestamp, prediction, true_value in zip(test_times, predictions, actual):
-        print(f"time={timestamp} pred_OT={prediction:.3f} true_OT={true_value:.3f}")
+        predictions = model(features[:1].to(DEVICE)).cpu().numpy()
+
+    target_mean = mean[TARGET_INDICES]
+    target_std = std[TARGET_INDICES]
+    predictions = predictions * target_std + target_mean
+    actual = targets[:1].numpy() * target_std + target_mean
+
+    for step, timestamp in enumerate(test_times[:HORIZON]):
+        values = " ".join(
+            f"pred_{name}={predictions[0, step, target_index]:.3f} "
+            f"true_{name}={actual[0, step, target_index]:.3f}"
+            for target_index, name in enumerate(TARGET_NAMES)
+        )
+        print(f"time={timestamp} {values}")
 
 
 if __name__ == "__main__":
