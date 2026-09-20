@@ -74,7 +74,7 @@ python 07_gnn_node_classification.py
 | `01_mlp_classification.py` | 两次 `train_test_split` 得到 60% / 20% / 20% | 使用 `stratify` 保持 Wine 三个类别的比例 |
 | `02_cnn_image_classification.py` | 使用 `random_split` 将 MNIST 官方训练集拆为 55,000 条训练数据和 5,000 条验证数据 | 使用固定 `torch.Generator` 保证拆分可复现；官方测试集保持不变 |
 | `03_lstm_time_series_forecast.py` | 两次 `train_test_split` 得到 70% / 15% / 15% | 必须设置 `shuffle=False`，保持时间顺序 |
-| `04_transformer_time_series_forecast.py` | 两次 `train_test_split` 得到 70% / 15% / 15% | 必须设置 `shuffle=False`，保持时间顺序 |
+| `04_transformer_time_series_forecast.py` | 两次 `train_test_split` 得到 70% / 15% / 15% | 必须设置 `shuffle=False`，保持时间顺序；窗口同时支持多步和多目标 |
 | `05_autoencoder_anomaly_detection.py` | 正常样本划分为训练、验证和测试，异常样本放入测试集 | Autoencoder 的训练集和阈值验证集只包含正常样本 |
 | `06_rnn_sequence_classification.py` | 从 UCR 官方训练集划出 20% 验证数据 | 使用 `stratify`；官方测试集保持不变 |
 | `07_gnn_node_classification.py` | 每个类别划出 20 个训练节点和 30 个验证节点 | 使用布尔 mask 训练 GCN，其余节点用于测试 |
@@ -93,6 +93,21 @@ python 07_gnn_node_classification.py
 4. 用相同 seed 检查结果可复现，并用类别计数验证 stratified split 是否保持了类别比例。
 
 以后也可以用同样的“先会用 → 再读源码 → 最后写简化版”方法学习 `StandardScaler`、常见 metric、PyTorch 的 `Dataset` 和 `DataLoader`。目标不是复刻 library 的全部边界处理，而是理解核心算法和接口设计。
+
+## Transformer 预测类型练习
+
+`04_transformer_time_series_forecast.py` 的窗口输出形状为 `[horizon, num_targets]`，经过 `DataLoader` 后模型目标与输出均为 `[batch_size, horizon, num_targets]`。
+
+修改 `HORIZON` 和 `TARGET_NAMES` 可以在同一套完整流程中练习四种预测任务：
+
+| 预测类型 | 配置示例 | 模型输出形状 |
+|---|---|---|
+| 单步、单目标 | `HORIZON = 1`，`TARGET_NAMES = ["OT"]` | `[B, 1, 1]` |
+| 多步、单目标 | `HORIZON = 24`，`TARGET_NAMES = ["OT"]` | `[B, 24, 1]` |
+| 单步、多目标 | `HORIZON = 1`，`TARGET_NAMES = ["HUFL", "OT"]` | `[B, 1, 2]` |
+| 多步、多目标 | `HORIZON = 24`，`TARGET_NAMES = ["HUFL", "OT"]` | `[B, 24, 2]` |
+
+滑动窗口的样本数量为 `len(data) - lookback - horizon + 1`，每个样本使用过去 `lookback` 步作为输入，并把紧接着的 `horizon` 步作为预测目标。
 
 ## 空白重写练习模板
 
@@ -162,9 +177,9 @@ python 07_gnn_node_classification.py
 - 为 backbone 和分类头设置不同的 learning rate
 - 保存和加载微调后的最佳模型
 
-### 12. 多步时间序列预测
+### 12. 进阶多步时间序列预测
 
-使用多变量历史序列预测未来多个时间步，例如用历史96步预测未来24步，重点练习：
+在流程4的直接多步预测基础上继续增加更完整的预测与分析能力，重点练习：
 
 - 按时间顺序划分训练集、验证集和测试集，避免数据泄漏
 - 使用滑动窗口构造 `[B, seq_len, features]` 输入
@@ -172,6 +187,7 @@ python 07_gnn_node_classification.py
 - 只使用训练集统计量进行标准化和逆标准化
 - 使用 MAE、MSE 和 RMSE 评估预测结果
 - 绘制未来多个时间步的真实值与预测值
+- 对比 direct、recursive 和 encoder-decoder 多步预测方式
 
 ### 进入第二阶段的标准
 
@@ -194,7 +210,7 @@ python 07_gnn_node_classification.py
 | MLP 表格分类 | UCI Wine | `python download_data/download_01_mlp_wine.py` |
 | CNN 图像分类 | MNIST | `python download_data/download_02_cnn_mnist.py` |
 | LSTM 时序预测 | AirPassengers（两列 CSV） | `python download_data/download_03_lstm_air_passengers.py` |
-| Transformer 多变量预测 | ETTh1（规整 CSV） | `python download_data/download_04_transformer_etth1.py` |
+| Transformer 多步、多目标预测 | ETTh1（规整 CSV） | `python download_data/download_04_transformer_etth1.py` |
 | Autoencoder 异常检测 | UCI Wisconsin Breast Cancer | `python download_data/download_05_autoencoder_breast_cancer.py` |
 | RNN 序列分类 | UCR SyntheticControl（600条） | `python download_data/download_06_rnn_synthetic_control.py` |
 | GNN 节点分类 | LINQS Cora | `python download_data/download_07_gnn_cora.py` |
