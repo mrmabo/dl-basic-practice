@@ -1,4 +1,4 @@
-"""完整流程 6：使用 UCR SyntheticControl 公开数据训练 RNN 分类模型。"""
+"""完整流程 6：使用 UCR SyntheticControl 训练固定或可变长度 RNN 分类模型。"""
 
 import os
 import random
@@ -9,16 +9,20 @@ import torch
 from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
+from torch.nn.utils.rnn import pack_padded_sequence, pad_sequence
 
 SEED = 42
 BATCH_SIZE = 32
 EPOCHS = int(os.getenv("EPOCHS", "30"))
+VARIABLE_LENGTH = os.getenv("VARIABLE_LENGTH", "0") == "1"
+MIN_SEQUENCE_LENGTH = 30
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data" / "rnn_synthetic_control"
 TRAIN_PATH = DATA_DIR / "SyntheticControl_TRAIN.txt"
 TEST_PATH = DATA_DIR / "SyntheticControl_TEST.txt"
-CHECKPOINT_PATH = ROOT / "best_rnn.pt"
+MODE = "variable" if VARIABLE_LENGTH else "fixed"
+CHECKPOINT_PATH = ROOT / f"best_rnn_{MODE}.pt"
 
 
 def set_seed():
@@ -30,15 +34,32 @@ def set_seed():
 
 
 class SequenceDataset(Dataset):
-    def __init__(self, features, labels):
-        self.features = torch.tensor(features, dtype=torch.float32).unsqueeze(-1)
+    def __init__(self, features, labels, seed=SEED):
+        self.features = torch.tensor(features, dtype=torch.float32)
         self.labels = torch.tensor(labels, dtype=torch.long)
+        if VARIABLE_LENGTH:
+            rng = np.random.default_rng(seed)
+            self.lengths = rng.integers(
+                MIN_SEQUENCE_LENGTH,
+                self.features.size(1) + 1,
+                size=len(self.labels),
+            )
+        else:
+            self.lengths = np.full(len(self.labels), self.features.size(1))
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, index):
-        return self.features[index], self.labels[index]
+        length = int(self.lengths[index])
+        sequence = self.features[index, :length].unsqueeze(-1)
+        return sequence, self.labels[index], length
+
+
+def collate_sequences(batch):
+    sequences, labels, lengths = zip(*batch)
+    padded = pad_sequence(sequences, batch_first=True)
+    return padded, torch.stack(labels), torch.tensor(lengths, dtype=torch.long)
 
 
 def load_ucr_file(path):
@@ -79,19 +100,32 @@ def build_dataloaders():
         stratify=all_train_y,
     )
 
-    mean = train_x.mean(axis=0)
-    std = train_x.std(axis=0)
-    std[std == 0] = 1.0
+    mean = train_x.mean()
+    std = train_x.std()
+    std = std if std > 0 else 1.0
     train_x = (train_x - mean) / std
     val_x = (val_x - mean) / std
     test_x = (test_x - mean) / std
 
-    train_dataset = SequenceDataset(train_x, train_y)
-    val_dataset = SequenceDataset(val_x, val_y)
-    test_dataset = SequenceDataset(test_x, test_y)
-    train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, BATCH_SIZE)
-    test_loader = DataLoader(test_dataset, BATCH_SIZE)
+    train_dataset = SequenceDataset(train_x, train_y, seed=SEED)
+    val_dataset = SequenceDataset(val_x, val_y, seed=SEED + 1)
+    test_dataset = SequenceDataset(test_x, test_y, seed=SEED + 2)
+    train_loader = DataLoader(
+        train_dataset,
+        BATCH_SIZE,
+        shuffle=True,
+        collate_fn=collate_sequences,
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        BATCH_SIZE,
+        collate_fn=collate_sequences,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        BATCH_SIZE,
+        collate_fn=collate_sequences,
+    )
     return train_loader, val_loader, test_loader
 
 
@@ -107,8 +141,14 @@ class RNNClassifier(nn.Module):
         )
         self.head = nn.Linear(32, 6)
 
-    def forward(self, features):
-        _, hidden = self.rnn(features)  # [B, 60, 1] -> hidden [1, B, 32]
+    def forward(self, features, lengths):
+        packed = pack_padded_sequence(
+            features,
+            lengths.cpu(),
+            batch_first=True,
+            enforce_sorted=False,
+        )
+        _, hidden = self.rnn(packed)
         return self.head(hidden[-1])  # [B, 6]
 
 
@@ -118,10 +158,10 @@ def evaluate(model, loader, loss_fn):
     correct = 0
     total = 0
     with torch.no_grad():
-        for features, labels in loader:
+        for features, labels, lengths in loader:
             features = features.to(DEVICE)
             labels = labels.to(DEVICE)
-            logits = model(features)
+            logits = model(features, lengths)
             total_loss += loss_fn(logits, labels).item() * features.size(0)
             correct += (logits.argmax(dim=1) == labels).sum().item()
             total += features.size(0)
@@ -139,11 +179,11 @@ def main():
     for epoch in range(1, EPOCHS + 1):
         model.train()
         train_loss = 0.0
-        for features, labels in train_loader:
+        for features, labels, lengths in train_loader:
             features = features.to(DEVICE)
             labels = labels.to(DEVICE)
             optimizer.zero_grad()
-            loss = loss_fn(model(features), labels)
+            loss = loss_fn(model(features, lengths), labels)
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
@@ -163,11 +203,12 @@ def main():
         torch.load(CHECKPOINT_PATH, map_location=DEVICE, weights_only=True)
     )
     test_loss, test_acc = evaluate(model, test_loader, loss_fn)
-    print(f"test_loss={test_loss:.4f} test_acc={test_acc:.3f}")
-    features, labels = next(iter(test_loader))
+    print(f"mode={MODE} test_loss={test_loss:.4f} test_acc={test_acc:.3f}")
+    features, labels, lengths = next(iter(test_loader))
     model.eval()
     with torch.no_grad():
-        predictions = model(features[:8].to(DEVICE)).argmax(dim=1).cpu()
+        predictions = model(features[:8].to(DEVICE), lengths[:8]).argmax(dim=1).cpu()
+    print("lengths:", lengths[:8].tolist())
     print("pred:", predictions.tolist())
     print("true:", labels[:8].tolist())
 
