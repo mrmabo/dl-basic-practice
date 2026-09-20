@@ -1,4 +1,4 @@
-"""完整流程 5：使用 WDBC 公开数据训练 Autoencoder 异常检测模型。"""
+"""完整流程 5：使用 WDBC 训练普通或 Denoising Autoencoder 异常检测模型。"""
 
 import os
 import random
@@ -14,10 +14,13 @@ from torch.utils.data import DataLoader, Dataset
 SEED = 42
 BATCH_SIZE = 32
 EPOCHS = int(os.getenv("EPOCHS", "50"))
+DENOISING = os.getenv("DENOISING", "0") == "1"
+NOISE_STD = float(os.getenv("NOISE_STD", "0.1"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_PATH = ROOT / "data" / "autoencoder_breast_cancer" / "wdbc.data"
-CHECKPOINT_PATH = ROOT / "best_autoencoder.pt"
+MODE = "denoising" if DENOISING else "standard"
+CHECKPOINT_PATH = ROOT / f"best_autoencoder_{MODE}.pt"
 
 
 def set_seed():
@@ -147,8 +150,11 @@ def main():
         train_loss = 0.0
         for features, _ in train_loader:
             features = features.to(DEVICE)
+            model_inputs = features
+            if DENOISING:
+                model_inputs = features + torch.randn_like(features) * NOISE_STD
             optimizer.zero_grad()
-            loss = loss_fn(model(features), features)
+            loss = loss_fn(model(model_inputs), features)
             loss.backward()
             optimizer.step()
             train_loss += loss.item() * features.size(0)
@@ -168,6 +174,7 @@ def main():
     model.load_state_dict(
         torch.load(CHECKPOINT_PATH, map_location=DEVICE, weights_only=True)
     )
+    print(f"mode={MODE} noise_std={NOISE_STD if DENOISING else 0.0}")
     val_scores, _ = reconstruction_scores(model, val_loader)
     threshold = torch.quantile(val_scores, 0.95)
     test_scores, labels = reconstruction_scores(model, test_loader)
