@@ -71,12 +71,12 @@ python 07_gnn_node_classification.py
 
 | 脚本 | 划分方式 | 必须保留的规则 |
 |---|---|---|
-| `01_mlp_classification.py` | 两次 `train_test_split` 得到 60% / 20% / 20% | 使用 `stratify` 保持 Wine 三个类别的比例 |
+| `01_mlp_classification.py` | 两次 `train_test_split` 得到 60% / 20% / 20% | 分类模式使用 `stratify`；回归模式不使用 |
 | `02_cnn_image_classification.py` | 使用 `random_split` 将 MNIST 官方训练集拆为 55,000 条训练数据和 5,000 条验证数据 | 使用固定 `torch.Generator` 保证拆分可复现；官方测试集保持不变 |
 | `03_lstm_time_series_forecast.py` | 两次 `train_test_split` 得到 70% / 15% / 15% | 必须设置 `shuffle=False`，保持时间顺序 |
 | `04_transformer_time_series_forecast.py` | 两次 `train_test_split` 得到 70% / 15% / 15% | 必须设置 `shuffle=False`，保持时间顺序；窗口同时支持多步和多目标 |
 | `05_autoencoder_anomaly_detection.py` | 正常样本划分为训练、验证和测试，异常样本放入测试集 | Autoencoder 的训练集和阈值验证集只包含正常样本 |
-| `06_rnn_sequence_classification.py` | 从 UCR 官方训练集划出 20% 验证数据 | 使用 `stratify`；官方测试集保持不变 |
+| `06_rnn_sequence_classification.py` | 从 UCR 官方训练集划出 20% 验证数据 | 使用 `stratify`；可变长度模式使用 padding 和真实长度 |
 | `07_gnn_node_classification.py` | 每个类别划出 20 个训练节点和 30 个验证节点 | 使用布尔 mask 训练 GCN，其余节点用于测试 |
 
 无论使用哪种划分方式，都只使用训练集计算均值和标准差，验证集与测试集不能参与统计量拟合，否则会发生 data leakage。
@@ -108,6 +108,51 @@ python 07_gnn_node_classification.py
 | 多步、多目标 | `HORIZON = 24`，`TARGET_NAMES = ["HUFL", "OT"]` | `[B, 24, 2]` |
 
 滑动窗口的样本数量为 `len(data) - lookback - horizon + 1`，每个样本使用过去 `lookback` 步作为输入，并把紧接着的 `horizon` 步作为预测目标。
+
+## 其他可切换任务练习
+
+### MLP：表格分类与回归
+
+`01_mlp_classification.py` 默认使用 Wine 类别标签完成三分类；设置 `TASK=regression` 后，使用其余12个属性预测连续的 alcohol 含量。
+
+```powershell
+$env:TASK="classification"
+python 01_mlp_classification.py
+
+$env:TASK="regression"
+python 01_mlp_classification.py
+```
+
+分类模式使用 `[B, 3]` logits、`CrossEntropyLoss` 和 accuracy；回归模式使用 `[B, 1]` 输出、`MSELoss` 和 MAE，并且只用训练集统计量标准化和逆标准化回归目标。
+
+### Autoencoder：普通重建与去噪重建
+
+`05_autoencoder_anomaly_detection.py` 默认使用干净输入重建自身；设置 `DENOISING=1` 后，模型接收加入高斯噪声的输入，但仍以原始干净特征作为重建目标。
+
+```powershell
+$env:DENOISING="0"
+python 05_autoencoder_anomaly_detection.py
+
+$env:DENOISING="1"
+$env:NOISE_STD="0.1"
+python 05_autoencoder_anomaly_detection.py
+```
+
+两种模式都使用干净的验证集重建误差选择 checkpoint，并使用干净测试样本的重建误差计算 anomaly score。
+
+### RNN：固定长度与可变长度序列
+
+`06_rnn_sequence_classification.py` 默认保留全部60个时间步；设置 `VARIABLE_LENGTH=1` 后，每条序列被确定性地截成30至60步，再由 `collate_fn`、`pad_sequence` 和 `pack_padded_sequence` 完成批处理。
+
+```powershell
+$env:VARIABLE_LENGTH="0"
+python 06_rnn_sequence_classification.py
+
+$env:VARIABLE_LENGTH="1"
+python 06_rnn_sequence_classification.py
+```
+
+padding 只负责把一个 batch 补成相同长度，RNN 根据真实 `lengths` 读取 packed sequence，因此不会把补出的0当作有效时间步。
 
 ## 空白重写练习模板
 
@@ -207,12 +252,12 @@ python 07_gnn_node_classification.py
 
 | 流程 | 公开数据 | 下载命令 |
 |---|---|---|
-| MLP 表格分类 | UCI Wine | `python download_data/download_01_mlp_wine.py` |
+| MLP 表格分类/回归 | UCI Wine | `python download_data/download_01_mlp_wine.py` |
 | CNN 图像分类 | MNIST | `python download_data/download_02_cnn_mnist.py` |
 | LSTM 时序预测 | AirPassengers（两列 CSV） | `python download_data/download_03_lstm_air_passengers.py` |
 | Transformer 多步、多目标预测 | ETTh1（规整 CSV） | `python download_data/download_04_transformer_etth1.py` |
-| Autoencoder 异常检测 | UCI Wisconsin Breast Cancer | `python download_data/download_05_autoencoder_breast_cancer.py` |
-| RNN 序列分类 | UCR SyntheticControl（600条） | `python download_data/download_06_rnn_synthetic_control.py` |
+| 普通/去噪 Autoencoder 异常检测 | UCI Wisconsin Breast Cancer | `python download_data/download_05_autoencoder_breast_cancer.py` |
+| RNN 固定/可变长度序列分类 | UCR SyntheticControl（600条） | `python download_data/download_06_rnn_synthetic_control.py` |
 | GNN 节点分类 | LINQS Cora | `python download_data/download_07_gnn_cora.py` |
 
 所有训练脚本都只使用训练集统计量进行标准化，避免验证集和测试集信息泄漏。时序数据按照时间顺序划分，分类数据则采用固定随机种子进行可复现的划分。
