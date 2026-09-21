@@ -72,6 +72,11 @@ python download_data/download_04_transformer_etth1.py
 python download_data/download_05_autoencoder_breast_cancer.py
 python download_data/download_06_rnn_synthetic_control.py
 python download_data/download_07_gnn_cora.py
+
+# 第二层（待实现）
+python download_data/download_08_gru_forda.py
+python download_data/download_09_resnet_cifar10.py
+python download_data/download_10_attention_ecg5000.py
 ```
 
 所有数据都会保存在仓库的 `data/` 目录中，该目录不会提交到 GitHub。\n\n其中MNIST由下载脚本调用`torchvision.datasets.MNIST(download=True)`保存；CNN训练脚本使用`download=False`读取，不再手动解析IDX文件。
@@ -88,6 +93,11 @@ python 04_transformer_time_series_forecast.py
 python 05_autoencoder_anomaly_detection.py
 python 06_rnn_sequence_classification.py
 python 07_gnn_node_classification.py
+
+# 第二层（待实现）
+python 08_gru_sequence_classification.py
+python 09_resnet_block_image_classification.py
+python 10_multihead_attention_sequence_classification.py
 ```
 
 其中 GNN 示例用纯 PyTorch 实现 GCN，不需要额外安装 `torch_geometric`。
@@ -105,6 +115,9 @@ python 07_gnn_node_classification.py
 | `05_autoencoder_anomaly_detection.py` | 正常样本划分为训练、验证和测试，异常样本放入测试集 | Autoencoder 的训练集和阈值验证集只包含正常样本 |
 | `06_rnn_sequence_classification.py` | 从 UCR 官方训练集划出 20% 验证数据 | 使用 `stratify`；可变长度模式使用 padding 和真实长度 |
 | `07_gnn_node_classification.py` | 每个类别划出 20 个训练节点和 30 个验证节点 | 使用布尔 mask 训练 GCN，其余节点用于测试 |
+| `08_gru_sequence_classification.py` | 使用 FordA 官方 train/test；从官方 train 中划出 validation | 分类划分使用 stratify；标准化统计量只来自训练部分 |
+| `09_resnet_block_image_classification.py` | 使用 CIFAR-10 官方 train/test；从官方 train 中划出 validation | 使用固定 generator 保证划分可复现；test 保持官方划分 |
+| `10_multihead_attention_sequence_classification.py` | 使用 ECG5000 官方 train/test；从官方 train 中划出 validation | 分类划分使用 stratify；标准化统计量只来自训练部分 |
 
 无论使用哪种划分方式，都只使用训练集计算均值和标准差，验证集与测试集不能参与统计量拟合，否则会发生 data leakage。
 
@@ -208,45 +221,68 @@ padding 只负责把一个 batch 补成相同长度，RNN 根据真实 `lengths`
 
 ## 第二层：进阶模型与常见应用任务
 
-当前7套流程属于第一层，目标是掌握 PyTorch 的通用训练闭环，以及表格、图像、时间序列和图数据的基本处理方式。第二层正式从流程8开始：先练习 GRU、ResNet Block 和 Multi-Head Attention，再继续完成5套常见应用任务，因此第二层共包含流程8～15。
+当前7套流程属于第一层，目标是掌握 PyTorch 的通用训练闭环，以及表格、图像、时间序列和图数据的基本处理方式。第二层正式从流程8开始：先完成 GRU、ResNet Block 和 Multi-Head Attention 三套完整训练流程，再继续完成5套常见应用任务，因此第二层共包含流程8～15。
 
-### 第二层前3套：核心模型模块
+### 第二层前3套：进阶模型完整流程
 
-流程8～10属于第二层的正式练习编号。重点是从空白文件独立写出核心模块、跑通输入输出，并能够解释每一步 tensor shape；熟练后再进入流程11～15的完整应用任务。
+流程8～10属于第二层的正式完整流程，完成标准与第一层一致：每套都必须有对应公开数据、独立下载脚本、数据划分、Dataset、DataLoader、模型、loss、metric、training、validation、checkpoint、test 和 inference，并在关键位置标注 tensor shape。
 
-### 8. GRU
+### 8. GRU 序列分类
 
-在已经掌握 RNN 和 LSTM 的基础上，手写一个使用 `nn.GRU` 的序列模型，重点练习：
+建议脚本：`08_gru_sequence_classification.py`
 
+建议数据：UCR FordA；对应下载脚本：`download_data/download_08_gru_forda.py`。
+
+在已经掌握 RNN 和 LSTM 的基础上，完成一套使用 `nn.GRU` 的完整序列分类流程，重点练习：
+
+- 下载并读取公开序列数据，完成 train / validation / test 划分
+- 构造 `Dataset` 与 `DataLoader`
 - 理解 GRU 与 LSTM 在 hidden state、门控结构和返回值上的区别
 - 熟悉 `nn.GRU(input_size, hidden_size, num_layers, batch_first=True)`
 - 能够解释输入 `[B, L, F]`、输出 `[B, L, H]` 和最终 hidden state 的 shape
-- 使用最后一个时间步或最终 hidden state 接 `Linear` prediction head
-- 将同一个时序任务分别用 RNN、LSTM、GRU 实现并比较代码结构
+- 使用最后一个时间步或最终 hidden state 接 `Linear` classification head
+- 使用 `CrossEntropyLoss`、accuracy、validation checkpoint 和 test evaluation
+- 加载最佳权重并对测试样本完成 inference
+- 将相近任务分别用 RNN、LSTM、GRU 实现并比较代码结构
 
-### 9. ResNet Block
+### 9. ResNet Block 图像分类
 
-独立实现一个基础 Residual Block，而不是直接调用完整 ResNet，重点练习：
+建议脚本：`09_resnet_block_image_classification.py`
 
+建议数据：CIFAR-10；对应下载脚本：`download_data/download_09_resnet_cifar10.py`，由 `torchvision.datasets.CIFAR10(download=True)` 下载。
+
+完整流程中自己实现基础 Residual Block，而不是直接调用完整 ResNet，重点练习：
+
+- CIFAR-10 的 train / validation / test 数据流程与图像 transform
+- `Dataset`、`DataLoader`、训练、验证、checkpoint、test 和 inference
 - `Conv2d → BatchNorm2d → ReLU` 的基本卷积块
 - residual / skip connection：`out + identity`
 - 输入输出通道相同时的 identity shortcut
 - stride 或通道数变化时使用 projection shortcut
-- 理解为什么 residual connection 有助于深层网络的优化
-- 能够跟踪 `[B, C, H, W]` 在卷积、stride 和 shortcut 中的 shape 变化
+- 使用多个自定义 Residual Block 组成一个小型 ResNet classifier
+- 使用 `CrossEntropyLoss` 和 accuracy
+- 跟踪 `[B, C, H, W]` 在卷积、stride 和 shortcut 中的 shape 变化
 
-完成基础 block 后，再阅读和练习 ResNet-18 中 BasicBlock 的组织方式。
+完成该流程后，再阅读 torchvision ResNet-18 中 BasicBlock 的组织方式。
 
-### 10. Multi-Head Attention
+### 10. Multi-Head Attention 序列分类
 
-在已经使用 `TransformerEncoder` 之后，单独练习多头注意力，避免只会调用完整 Transformer，重点练习：
+建议脚本：`10_multihead_attention_sequence_classification.py`
 
-- 使用 `nn.MultiheadAttention`
+建议数据：UCR ECG5000；对应下载脚本：`download_data/download_10_attention_ecg5000.py`。
+
+在已经使用 `TransformerEncoder` 之后，单独用 `nn.MultiheadAttention` 完成一套完整序列分类流程，避免只会调用完整 Transformer，重点练习：
+
+- 下载并读取公开序列数据，完成 train / validation / test 划分
+- 使用输入投影把原始 feature 映射到 `d_model`
+- 使用 `nn.MultiheadAttention(batch_first=True)`
 - 理解 Query、Key、Value 的输入含义
 - 理解 `d_model`、`num_heads` 与每个 head 的维度关系
 - 跟踪输入输出 shape，例如 `[B, L, d_model] → [B, L, d_model]`
 - 理解多个 attention head 的并行计算、拼接和输出投影
 - 练习 self-attention，并观察 attention weights 的 shape
+- 使用 pooling / last token 后接 classification head
+- 使用 `CrossEntropyLoss`、accuracy、validation checkpoint、test 和 inference
 - 在熟悉 library API 后，再尝试用 `Linear + reshape + matmul + softmax` 手写简化版 scaled dot-product / multi-head attention
 
 第二层前3套建议顺序：
@@ -319,7 +355,7 @@ padding 只负责把一个 batch 补成相同长度，RNN 根据真实 `lengths`
 - 绘制未来多个时间步的真实值与预测值
 - 对比 direct、recursive 和 encoder-decoder 多步预测方式
 
-流程11～15仍然必须完整包含：公开数据下载脚本、训练/验证/测试划分、Dataset、DataLoader、模型、loss、metric、checkpoint、inference，以及 README 中的运行命令和 tensor shape。流程8～10以核心模型模块手写、shape 跟踪和最小可运行验证为主。
+流程8～15全部必须完整包含：公开数据下载脚本、训练/验证/测试划分、Dataset、DataLoader、模型、loss、metric、training、validation、checkpoint、test、inference，以及 README 中的运行命令和 tensor shape。流程8～10除了完成完整闭环，还要额外强调核心模块的手写与 shape 跟踪。
 
 ### 进入第二层的标准
 
@@ -436,6 +472,9 @@ DDPM 完成后，再学习 latent diffusion、VAE latent space、text conditioni
 | 普通/去噪 Autoencoder 异常检测 | UCI Wisconsin Breast Cancer | `python download_data/download_05_autoencoder_breast_cancer.py` |
 | RNN 固定/可变长度序列分类 | UCR SyntheticControl（600条） | `python download_data/download_06_rnn_synthetic_control.py` |
 | GNN 节点分类 | LINQS Cora | `python download_data/download_07_gnn_cora.py` |
+| GRU 序列分类 | UCR FordA | `python download_data/download_08_gru_forda.py` |
+| ResNet Block 图像分类 | CIFAR-10 | `python download_data/download_09_resnet_cifar10.py` |
+| Multi-Head Attention 序列分类 | UCR ECG5000 | `python download_data/download_10_attention_ecg5000.py` |
 
 所有训练脚本都只使用训练集统计量进行标准化，避免验证集和测试集信息泄漏。时序数据按照时间顺序划分，分类数据则采用固定随机种子进行可复现的划分。
 
