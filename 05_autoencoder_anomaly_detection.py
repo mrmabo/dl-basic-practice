@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, Dataset
 
 SEED = 42
 BATCH_SIZE = 32
-EPOCHS = int(os.getenv("EPOCHS", "50"))
+EPOCHS = int(os.getenv("EPOCHS", "300"))
 DENOISING = os.getenv("DENOISING", "0") == "1"
 NOISE_STD = float(os.getenv("NOISE_STD", "0.1"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -83,11 +83,13 @@ def build_dataloaders():
         train_size=0.60,
         random_state=SEED,
     )
-    val_features, normal_test_features, val_labels, normal_test_labels = train_test_split(
-        temp_features,
-        temp_labels,
-        train_size=0.50,
-        random_state=SEED,
+    val_features, normal_test_features, val_labels, normal_test_labels = (
+        train_test_split(
+            temp_features,
+            temp_labels,
+            train_size=0.50,
+            random_state=SEED,
+        )
     )
     test_features = np.concatenate([normal_test_features, anomaly_features], axis=0)
     test_labels = np.concatenate([normal_test_labels, anomaly_labels], axis=0)
@@ -176,7 +178,7 @@ def main():
     )
     print(f"mode={MODE} noise_std={NOISE_STD if DENOISING else 0.0}")
     val_scores, _ = reconstruction_scores(model, val_loader)
-    threshold = torch.quantile(val_scores, 0.95)
+    threshold = torch.quantile(val_scores, 0.75)
     test_scores, labels = reconstruction_scores(model, test_loader)
     predictions = (test_scores > threshold).long()
 
