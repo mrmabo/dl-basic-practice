@@ -16,6 +16,9 @@
 
 ```text
 第一层7套流程全部熟练
+→ 第二层核心模块手写：GRU
+→ 第二层核心模块手写：ResNet Block
+→ 第二层核心模块手写：Multi-Head Attention
 → U-Net图像分割
 → Embedding + LSTM文本分类
 → 迁移学习
@@ -205,7 +208,55 @@ padding 只负责把一个 batch 补成相同长度，RNN 根据真实 `lengths`
 
 ## 第二层：常见应用任务
 
-当前7套流程属于第一层，目标是掌握 PyTorch 的通用训练闭环，以及表格、图像、时间序列和图数据的基本处理方式；完成第一层后，再增加下面5套流程，将项目扩展为12套完整流程。
+当前7套流程属于第一层，目标是掌握 PyTorch 的通用训练闭环，以及表格、图像、时间序列和图数据的基本处理方式；完成第一层后，先手写三个重要模型模块，再增加下面5套完整应用流程，将项目扩展为12套完整流程。
+
+### 第二层核心模块手写练习
+
+这三个练习不要求先做成新的完整训练项目，重点是从空白文件独立写出核心模块、跑通随机输入，并能够解释每一步 tensor shape。完成后再进入第8～12套完整应用流程。
+
+#### GRU
+
+在已经掌握 RNN 和 LSTM 的基础上，手写一个使用 `nn.GRU` 的序列模型，重点练习：
+
+- 理解 GRU 与 LSTM 在 hidden state、门控结构和返回值上的区别
+- 熟悉 `nn.GRU(input_size, hidden_size, num_layers, batch_first=True)`
+- 能够解释输入 `[B, L, F]`、输出 `[B, L, H]` 和最终 hidden state 的 shape
+- 使用最后一个时间步或最终 hidden state 接 `Linear` prediction head
+- 将同一个时序任务分别用 RNN、LSTM、GRU 实现并比较代码结构
+
+#### ResNet Block
+
+独立实现一个基础 Residual Block，而不是直接调用完整 ResNet，重点练习：
+
+- `Conv2d → BatchNorm2d → ReLU` 的基本卷积块
+- residual / skip connection：`out + identity`
+- 输入输出通道相同时的 identity shortcut
+- stride 或通道数变化时使用 projection shortcut
+- 理解为什么 residual connection 有助于深层网络的优化
+- 能够跟踪 `[B, C, H, W]` 在卷积、stride 和 shortcut 中的 shape 变化
+
+完成基础 block 后，再阅读和练习 ResNet-18 中 BasicBlock 的组织方式。
+
+#### Multi-Head Attention
+
+在已经使用 `TransformerEncoder` 之后，单独练习多头注意力，避免只会调用完整 Transformer，重点练习：
+
+- 使用 `nn.MultiheadAttention`
+- 理解 Query、Key、Value 的输入含义
+- 理解 `d_model`、`num_heads` 与每个 head 的维度关系
+- 跟踪输入输出 shape，例如 `[B, L, d_model] → [B, L, d_model]`
+- 理解多个 attention head 的并行计算、拼接和输出投影
+- 练习 self-attention，并观察 attention weights 的 shape
+- 在熟悉 library API 后，再尝试用 `Linear + reshape + matmul + softmax` 手写简化版 scaled dot-product / multi-head attention
+
+第二层核心模块建议顺序：
+
+```text
+GRU
+→ ResNet Block
+→ Multi-Head Attention
+→ 第8～12套完整应用流程
+```
 
 ### 8. CNN 图像回归
 
@@ -280,7 +331,7 @@ padding 只负责把一个 batch 补成相同长度，RNN 根据真实 `lengths`
 - 能够改变输入维度、类别数、预测长度、loss 或 metric
 - 能够正确保存、加载最佳 checkpoint 并完成 inference
 
-第二层建议顺序：U-Net 图像分割 → 文本分类 → 迁移学习 → 图像回归 → 多步时间序列预测。
+第二层建议顺序：GRU → ResNet Block → Multi-Head Attention → U-Net 图像分割 → 文本分类 → 迁移学习 → 图像回归 → 多步时间序列预测。
 
 ## 第三层：特殊训练范式
 
