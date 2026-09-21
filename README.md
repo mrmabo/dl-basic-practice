@@ -9,8 +9,8 @@
 | 层级 | 目标 | 流程 |
 |---|---|---|
 | 第一层：基础训练闭环 | 熟练 Dataset、DataLoader、模型、loss、训练、验证、checkpoint、测试和 inference | 1～7，当前已实现 |
-| 第二层：常见应用任务 | 掌握图像、文本、迁移学习和进阶时序任务的数据与输出结构 | 8～12，待实现 |
-| 第三层：特殊训练范式 | 掌握交互式强化学习和生成式扩散模型的不同训练闭环 | 13～14，待实现 |
+| 第二层：进阶模型与常见应用任务 | 掌握 GRU、Residual Block、Multi-Head Attention，以及图像、文本、迁移学习和进阶时序任务 | 8～15，待实现 |
+| 第三层：特殊训练范式 | 掌握交互式强化学习和生成式扩散模型的不同训练闭环 | 16～17，待实现 |
 
 推荐总顺序：
 
@@ -206,15 +206,15 @@ padding 只负责把一个 batch 补成相同长度，RNN 根据真实 `lengths`
 - 是否能够保存并重新加载验证集表现最好的模型
 - 是否输出最终测试指标和少量预测结果
 
-## 第二层：常见应用任务
+## 第二层：进阶模型与常见应用任务
 
-当前7套流程属于第一层，目标是掌握 PyTorch 的通用训练闭环，以及表格、图像、时间序列和图数据的基本处理方式；完成第一层后，先手写三个重要模型模块，再增加下面5套完整应用流程，将项目扩展为12套完整流程。
+当前7套流程属于第一层，目标是掌握 PyTorch 的通用训练闭环，以及表格、图像、时间序列和图数据的基本处理方式。第二层正式从流程8开始：先练习 GRU、ResNet Block 和 Multi-Head Attention，再继续完成5套常见应用任务，因此第二层共包含流程8～15。
 
-### 第二层核心模块手写练习
+### 第二层前3套：核心模型模块
 
-这三个练习不要求先做成新的完整训练项目，重点是从空白文件独立写出核心模块、跑通随机输入，并能够解释每一步 tensor shape。完成后再进入第8～12套完整应用流程。
+流程8～10属于第二层的正式练习编号。重点是从空白文件独立写出核心模块、跑通输入输出，并能够解释每一步 tensor shape；熟练后再进入流程11～15的完整应用任务。
 
-#### GRU
+### 8. GRU
 
 在已经掌握 RNN 和 LSTM 的基础上，手写一个使用 `nn.GRU` 的序列模型，重点练习：
 
@@ -224,7 +224,7 @@ padding 只负责把一个 batch 补成相同长度，RNN 根据真实 `lengths`
 - 使用最后一个时间步或最终 hidden state 接 `Linear` prediction head
 - 将同一个时序任务分别用 RNN、LSTM、GRU 实现并比较代码结构
 
-#### ResNet Block
+### 9. ResNet Block
 
 独立实现一个基础 Residual Block，而不是直接调用完整 ResNet，重点练习：
 
@@ -237,7 +237,7 @@ padding 只负责把一个 batch 补成相同长度，RNN 根据真实 `lengths`
 
 完成基础 block 后，再阅读和练习 ResNet-18 中 BasicBlock 的组织方式。
 
-#### Multi-Head Attention
+### 10. Multi-Head Attention
 
 在已经使用 `TransformerEncoder` 之后，单独练习多头注意力，避免只会调用完整 Transformer，重点练习：
 
@@ -249,18 +249,18 @@ padding 只负责把一个 batch 补成相同长度，RNN 根据真实 `lengths`
 - 练习 self-attention，并观察 attention weights 的 shape
 - 在熟悉 library API 后，再尝试用 `Linear + reshape + matmul + softmax` 手写简化版 scaled dot-product / multi-head attention
 
-第二层核心模块建议顺序：
+第二层前3套建议顺序：
 
 ```text
-GRU
-→ ResNet Block
-→ Multi-Head Attention
-→ 第8～12套完整应用流程
+8. GRU
+→ 9. ResNet Block
+→ 10. Multi-Head Attention
+→ 11～15. 完整应用流程
 ```
 
-### 8. CNN 图像回归
+### 11. CNN 图像回归
 
-建议脚本：`08_cnn_image_regression.py`
+建议脚本：`11_cnn_image_regression.py`
 
 使用 CNN 根据图像预测一个连续值，重点练习：
 
@@ -269,9 +269,9 @@ GRU
 - 对连续目标进行标准化和逆标准化
 - 理解分类任务与回归任务在输出头、loss 和 metric 上的区别
 
-### 9. U-Net 图像分割
+### 12. U-Net 图像分割
 
-建议脚本：`09_unet_image_segmentation.py`
+建议脚本：`12_unet_image_segmentation.py`
 
 使用成对的 image 和 mask 完成像素级预测，重点练习：
 
@@ -281,9 +281,9 @@ GRU
 - 使用 Dice 和 IoU 评估分割结果
 - 保存并可视化预测 mask
 
-### 10. Embedding + LSTM 文本分类
+### 13. Embedding + LSTM 文本分类
 
-建议脚本：`10_lstm_text_classification.py`
+建议脚本：`13_lstm_text_classification.py`
 
 使用简单的文本情感分类数据，完成从原始文本到分类结果的完整流程，重点练习：
 
@@ -293,9 +293,9 @@ GRU
 - 使用 `BCEWithLogitsLoss` 完成二分类
 - 从一条新的原始文本开始执行推理
 
-### 11. 预训练模型迁移学习
+### 14. 预训练模型迁移学习
 
-建议脚本：`11_cnn_transfer_learning.py`
+建议脚本：`14_cnn_transfer_learning.py`
 
 使用预训练 CNN 完成新的小型图像分类任务，重点练习：
 
@@ -305,9 +305,9 @@ GRU
 - 为 backbone 和分类头设置不同的 learning rate
 - 保存和加载微调后的最佳模型
 
-### 12. 进阶多步时间序列预测
+### 15. 进阶多步时间序列预测
 
-建议脚本：`12_advanced_time_series_forecast.py`
+建议脚本：`15_advanced_time_series_forecast.py`
 
 在流程4的直接多步预测基础上继续增加更完整的预测与分析能力，重点练习：
 
@@ -319,7 +319,7 @@ GRU
 - 绘制未来多个时间步的真实值与预测值
 - 对比 direct、recursive 和 encoder-decoder 多步预测方式
 
-第二层的每套流程仍然必须完整包含：公开数据下载脚本、训练/验证/测试划分、Dataset、DataLoader、模型、loss、metric、checkpoint、inference，以及 README 中的运行命令和 tensor shape。
+流程11～15仍然必须完整包含：公开数据下载脚本、训练/验证/测试划分、Dataset、DataLoader、模型、loss、metric、checkpoint、inference，以及 README 中的运行命令和 tensor shape。流程8～10以核心模型模块手写、shape 跟踪和最小可运行验证为主。
 
 ### 进入第二层的标准
 
@@ -331,15 +331,15 @@ GRU
 - 能够改变输入维度、类别数、预测长度、loss 或 metric
 - 能够正确保存、加载最佳 checkpoint 并完成 inference
 
-第二层建议顺序：GRU → ResNet Block → Multi-Head Attention → U-Net 图像分割 → 文本分类 → 迁移学习 → 图像回归 → 多步时间序列预测。
+第二层建议顺序：8 GRU → 9 ResNet Block → 10 Multi-Head Attention → 11 CNN 图像回归 → 12 U-Net 图像分割 → 13 文本分类 → 14 迁移学习 → 15 多步时间序列预测。
 
 ## 第三层：特殊训练范式
 
 第三层不再只是替换 Dataset、backbone 或 prediction head，而是学习与普通监督学习明显不同的训练数据来源、目标构造和推理过程。
 
-### 13. DQN 强化学习
+### 16. DQN 强化学习
 
-建议脚本：`13_dqn_cartpole.py`
+建议脚本：`16_dqn_cartpole.py`
 
 建议环境：Gymnasium `CartPole-v1`。
 
@@ -369,9 +369,9 @@ GRU
 
 完成 DQN 后，再增加 PPO 作为强化学习进阶任务；PPO 应重点练习 trajectory、return、advantage、policy/value network、importance ratio 和 clipped objective。
 
-### 14. DDPM 扩散模型
+### 17. DDPM 扩散模型
 
-建议脚本：`14_ddpm_mnist.py`
+建议脚本：`17_ddpm_mnist.py`
 
 建议数据：复用 torchvision MNIST，并使用小型 time-conditioned U-Net 预测噪声。
 
