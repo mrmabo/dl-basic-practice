@@ -8,8 +8,8 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 from torch import nn
-from torch.utils.data import DataLoader, Dataset
 from torch.nn.utils.rnn import pack_padded_sequence, pad_sequence
+from torch.utils.data import DataLoader, Dataset
 
 SEED = 42
 BATCH_SIZE = 32
