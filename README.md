@@ -2,6 +2,14 @@
 
 每个训练脚本都使用对应的公开数据，并包含：数据读取与预处理、`Dataset`、`DataLoader`、模型、训练、验证、保存最佳权重、加载权重、测试与预测。
 
+## 手写核心模块
+
+[`building_blocks/`](building_blocks/) 用于保存可以独立运行和复用的神经网络核心模块，与根目录中的完整训练流程分开。目前已加入手写 Multi-Head Self-Attention，后续可继续加入 ResNet 的 Residual Block、GoogLeNet 的 Inception Block 等模块。
+
+```bash
+python building_blocks/multi_head_self_attention.py
+```
+
 ## 三层学习路线总览
 
 这个项目按照“基础训练闭环 → 常见应用任务 → 特殊训练范式”逐层扩展；第一层已有可运行代码，第二层和第三层是后续按照本 README 继续实现的任务。
