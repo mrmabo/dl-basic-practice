@@ -3,6 +3,7 @@
 import os
 import random
 from pathlib import Path
+from typing import cast
 
 import torch
 from PIL import Image, ImageDraw
@@ -101,7 +102,8 @@ def build_dataloaders():
 
 def build_model():
     model = fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
-    input_features = model.roi_heads.box_predictor.cls_score.in_features
+    current_predictor = cast(FastRCNNPredictor, model.roi_heads.box_predictor)
+    input_features = current_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(input_features, num_classes=2)
     return model
 
