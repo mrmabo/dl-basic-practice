@@ -40,6 +40,10 @@ python 01_mlp_classification.py
 ```bash
 python download_data/download_09_oxford_pet.py
 python 09_unet_image_segmentation.py
+
+# 第二阶段后续流程示例
+python download_data/download_13_penn_fudan.py
+python 13_faster_rcnn_object_detection.py
 ```
 
 ## 当前流程
@@ -58,6 +62,9 @@ python 09_unet_image_segmentation.py
 | 10 | Embedding + LSTM 文本分类 | 第二阶段 |
 | 11 | ResNet18 迁移学习 | 第二阶段 |
 | 12 | 多变量多步时序预测 | 第二阶段 |
+| 13 | Faster R-CNN 目标检测 | 第二阶段 |
+| 14 | DistilBERT 文本微调 | 第二阶段 |
+| 15 | DDPM 图像生成 | 第二阶段 |
 
 ## 练习方法
 
