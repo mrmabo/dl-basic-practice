@@ -71,12 +71,12 @@ class UNet(nn.Module):
         self.head = nn.Conv2d(32, 1, 1)
 
     def forward(self, images):
-        skip1 = self.enc1(images)                   # [B, 32, 128, 128]
-        skip2 = self.enc2(self.pool(skip1))         # [B, 64, 64, 64]
-        hidden = self.bridge(self.pool(skip2))       # [B, 128, 32, 32]
+        skip1 = self.enc1(images)  # [B, 32, 128, 128]
+        skip2 = self.enc2(self.pool(skip1))  # [B, 64, 64, 64]
+        hidden = self.bridge(self.pool(skip2))  # [B, 128, 32, 32]
         hidden = self.dec2(torch.cat([self.up2(hidden), skip2], dim=1))
         hidden = self.dec1(torch.cat([self.up1(hidden), skip1], dim=1))
-        return self.head(hidden)                     # [B, 1, 128, 128]
+        return self.head(hidden)  # [B, 1, 128, 128]
 
 
 def dice_score(logits, targets):
@@ -108,7 +108,9 @@ def run_epoch(model, loader, loss_fn, optimizer=None):
 
 
 def main():
-    random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED)
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
     CHECKPOINT.parent.mkdir(exist_ok=True)
     full_train = PetSegmentationDataset("trainval")
     train_size = len(full_train) - 500
@@ -130,10 +132,14 @@ def main():
         if val_loss < best:
             best = val_loss
             torch.save(model.state_dict(), CHECKPOINT)
-        print(f"epoch={epoch:02d} train_loss={train_loss:.4f} train_dice={train_dice:.3f} "
-              f"val_loss={val_loss:.4f} val_dice={val_dice:.3f}")
+        print(
+            f"epoch={epoch:02d} train_loss={train_loss:.4f} train_dice={train_dice:.3f} "
+            f"val_loss={val_loss:.4f} val_dice={val_dice:.3f}"
+        )
 
-    model.load_state_dict(torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True))
+    model.load_state_dict(
+        torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True)
+    )
     test_loss, test_dice = run_epoch(model, test_loader, loss_fn)
     images, masks = next(iter(test_loader))
     with torch.no_grad():

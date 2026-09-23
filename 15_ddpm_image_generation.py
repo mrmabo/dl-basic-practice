@@ -40,10 +40,10 @@ class NoisePredictor(nn.Module):
     def forward(self, noisy_images, time_steps):
         time = self.time_embedding(time_steps)[:, :, None, None]  # [B,64,1,1]
         hidden = torch.nn.functional.silu(self.conv1(noisy_images))
-        hidden = torch.nn.functional.silu(self.down(hidden))       # [B,64,14,14]
+        hidden = torch.nn.functional.silu(self.down(hidden))  # [B,64,14,14]
         hidden = torch.nn.functional.silu(self.middle(hidden) + time)
-        hidden = torch.nn.functional.silu(self.up(hidden))         # [B,32,28,28]
-        return self.output(hidden)                                 # predicted noise
+        hidden = torch.nn.functional.silu(self.up(hidden))  # [B,32,28,28]
+        return self.output(hidden)  # predicted noise
 
 
 def build_schedule():
@@ -68,7 +68,9 @@ def run_epoch(model, loader, optimizer, alpha_bars):
     with context:
         for clean_images, _ in loader:
             clean_images = clean_images.to(DEVICE)
-            time_steps = torch.randint(0, TIME_STEPS, (len(clean_images),), device=DEVICE)
+            time_steps = torch.randint(
+                0, TIME_STEPS, (len(clean_images),), device=DEVICE
+            )
             noisy_images, true_noise = add_noise(clean_images, time_steps, alpha_bars)
             predicted_noise = model(noisy_images, time_steps)
             loss = torch.nn.functional.mse_loss(predicted_noise, true_noise)
@@ -90,7 +92,9 @@ def sample_images(model, count, betas, alphas, alpha_bars):
         predicted_noise = model(images, time_steps)
         alpha = alphas[step]
         alpha_bar = alpha_bars[step]
-        mean = (images - betas[step] / torch.sqrt(1 - alpha_bar) * predicted_noise) / torch.sqrt(alpha)
+        mean = (
+            images - betas[step] / torch.sqrt(1 - alpha_bar) * predicted_noise
+        ) / torch.sqrt(alpha)
         if step > 0:
             previous_alpha_bar = alpha_bars[step - 1]
             variance = betas[step] * (1 - previous_alpha_bar) / (1 - alpha_bar)
@@ -129,9 +133,13 @@ def main():
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             torch.save(model.state_dict(), CHECKPOINT)
-        print(f"epoch={epoch:02d} train_noise_mse={train_loss:.4f} val_noise_mse={val_loss:.4f}")
+        print(
+            f"epoch={epoch:02d} train_noise_mse={train_loss:.4f} val_noise_mse={val_loss:.4f}"
+        )
 
-    model.load_state_dict(torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True))
+    model.load_state_dict(
+        torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True)
+    )
     samples = sample_images(model, 16, betas, alphas, alpha_bars)
     save_image((samples + 1) / 2, SAMPLE_PATH, nrow=4)
     print("generated shape:", samples.shape)

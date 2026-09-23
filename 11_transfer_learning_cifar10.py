@@ -9,7 +9,13 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 from torchvision.datasets import CIFAR10
 from torchvision.models import ResNet18_Weights, resnet18
-from torchvision.transforms import Compose, Normalize, RandomHorizontalFlip, Resize, ToTensor
+from torchvision.transforms import (
+    Compose,
+    Normalize,
+    RandomHorizontalFlip,
+    Resize,
+    ToTensor,
+)
 
 SEED = 42
 BATCH_SIZE = 64
@@ -31,19 +37,30 @@ def transforms(training):
 
 def build_dataloaders():
     try:
-        augmented = CIFAR10(DATA_DIR, train=True, transform=transforms(True), download=False)
-        evaluation = CIFAR10(DATA_DIR, train=True, transform=transforms(False), download=False)
-        test_set = CIFAR10(DATA_DIR, train=False, transform=transforms(False), download=False)
+        augmented = CIFAR10(
+            DATA_DIR, train=True, transform=transforms(True), download=False
+        )
+        evaluation = CIFAR10(
+            DATA_DIR, train=True, transform=transforms(False), download=False
+        )
+        test_set = CIFAR10(
+            DATA_DIR, train=False, transform=transforms(False), download=False
+        )
     except RuntimeError as error:
         raise FileNotFoundError(
             "Run: python download_data/download_11_cifar10.py"
         ) from error
-    indices = torch.randperm(len(augmented), generator=torch.Generator().manual_seed(SEED))
+    indices = torch.randperm(
+        len(augmented), generator=torch.Generator().manual_seed(SEED)
+    )
     train_indices, val_indices = indices[:-5_000], indices[-5_000:]
     train_set = torch.utils.data.Subset(augmented, train_indices)
     val_set = torch.utils.data.Subset(evaluation, val_indices)
-    return (DataLoader(train_set, BATCH_SIZE, shuffle=True),
-            DataLoader(val_set, BATCH_SIZE), DataLoader(test_set, BATCH_SIZE))
+    return (
+        DataLoader(train_set, BATCH_SIZE, shuffle=True),
+        DataLoader(val_set, BATCH_SIZE),
+        DataLoader(test_set, BATCH_SIZE),
+    )
 
 
 def run_epoch(model, loader, loss_fn, optimizer=None):
@@ -54,11 +71,15 @@ def run_epoch(model, loader, loss_fn, optimizer=None):
     with context:
         for images, labels in loader:
             images, labels = images.to(DEVICE), labels.to(DEVICE)
-            logits = model(images); loss = loss_fn(logits, labels)
+            logits = model(images)
+            loss = loss_fn(logits, labels)
             if training:
-                optimizer.zero_grad(); loss.backward(); optimizer.step()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
             loss_sum += loss.item() * len(labels)
-            correct += (logits.argmax(1) == labels).sum().item(); count += len(labels)
+            correct += (logits.argmax(1) == labels).sum().item()
+            count += len(labels)
     return loss_sum / count, correct / count
 
 
@@ -67,14 +88,19 @@ def train_phase(model, train_loader, val_loader, epochs, optimizer, loss_fn, bes
         train_loss, train_acc = run_epoch(model, train_loader, loss_fn, optimizer)
         val_loss, val_acc = run_epoch(model, val_loader, loss_fn)
         if val_loss < best:
-            best = val_loss; torch.save(model.state_dict(), CHECKPOINT)
-        print(f"epoch={epoch:02d} train_loss={train_loss:.4f} train_acc={train_acc:.3f} "
-              f"val_loss={val_loss:.4f} val_acc={val_acc:.3f}")
+            best = val_loss
+            torch.save(model.state_dict(), CHECKPOINT)
+        print(
+            f"epoch={epoch:02d} train_loss={train_loss:.4f} train_acc={train_acc:.3f} "
+            f"val_loss={val_loss:.4f} val_acc={val_acc:.3f}"
+        )
     return best
 
 
 def main():
-    random.seed(SEED); torch.manual_seed(SEED); CHECKPOINT.parent.mkdir(exist_ok=True)
+    random.seed(SEED)
+    torch.manual_seed(SEED)
+    CHECKPOINT.parent.mkdir(exist_ok=True)
     train_loader, val_loader, test_loader = build_dataloaders()
     model = resnet18(weights=ResNet18_Weights.DEFAULT)
     for parameter in model.parameters():
@@ -83,18 +109,25 @@ def main():
     model.to(DEVICE)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.fc.parameters(), lr=1e-3)
-    best = train_phase(model, train_loader, val_loader, HEAD_EPOCHS, optimizer, loss_fn,
-                       float("inf"))
+    best = train_phase(
+        model, train_loader, val_loader, HEAD_EPOCHS, optimizer, loss_fn, float("inf")
+    )
 
     # Fine-tune layer4 with a smaller learning rate than the new classification head.
     for parameter in model.layer4.parameters():
         parameter.requires_grad = True
-    optimizer = torch.optim.Adam([
-        {"params": model.layer4.parameters(), "lr": 1e-5},
-        {"params": model.fc.parameters(), "lr": 1e-4},
-    ])
-    train_phase(model, train_loader, val_loader, FINETUNE_EPOCHS, optimizer, loss_fn, best)
-    model.load_state_dict(torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True))
+    optimizer = torch.optim.Adam(
+        [
+            {"params": model.layer4.parameters(), "lr": 1e-5},
+            {"params": model.fc.parameters(), "lr": 1e-4},
+        ]
+    )
+    train_phase(
+        model, train_loader, val_loader, FINETUNE_EPOCHS, optimizer, loss_fn, best
+    )
+    model.load_state_dict(
+        torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True)
+    )
     test_loss, test_acc = run_epoch(model, test_loader, loss_fn)
     images, labels = next(iter(test_loader))
     with torch.no_grad():

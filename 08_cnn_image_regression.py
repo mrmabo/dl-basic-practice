@@ -105,10 +105,14 @@ def main():
         if val_mse < best:
             best = val_mse
             torch.save(model.state_dict(), CHECKPOINT)
-        print(f"epoch={epoch:02d} train_mse={train_mse:.4f} train_mae={train_mae:.3f} "
-              f"val_mse={val_mse:.4f} val_mae={val_mae:.3f}")
+        print(
+            f"epoch={epoch:02d} train_mse={train_mse:.4f} train_mae={train_mae:.3f} "
+            f"val_mse={val_mse:.4f} val_mae={val_mae:.3f}"
+        )
 
-    model.load_state_dict(torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True))
+    model.load_state_dict(
+        torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True)
+    )
     test_mse, test_mae = run_epoch(model, test_loader, loss_fn)
     images, labels = next(iter(test_loader))
     with torch.no_grad():

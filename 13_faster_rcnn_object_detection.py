@@ -43,7 +43,9 @@ class PennFudanDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, index):
-        image = pil_to_tensor(Image.open(self.images[index]).convert("RGB")).float() / 255
+        image = (
+            pil_to_tensor(Image.open(self.images[index]).convert("RGB")).float() / 255
+        )
         instance_mask = pil_to_tensor(Image.open(self.masks[index])).squeeze(0)
         object_ids = torch.unique(instance_mask)[1:]  # remove background id 0
         masks = instance_mask == object_ids[:, None, None]
@@ -82,7 +84,11 @@ def build_dataloaders():
     indices = torch.randperm(
         len(base_dataset), generator=torch.Generator().manual_seed(SEED)
     )
-    train_indices, val_indices, test_indices = indices[:120], indices[120:150], indices[150:]
+    train_indices, val_indices, test_indices = (
+        indices[:120],
+        indices[120:150],
+        indices[150:],
+    )
     train_set = Subset(PennFudanDataset(augment=True), train_indices)
     val_set = Subset(PennFudanDataset(), val_indices)
     test_set = Subset(PennFudanDataset(), test_indices)
@@ -94,9 +100,7 @@ def build_dataloaders():
 
 
 def build_model():
-    model = fasterrcnn_resnet50_fpn(
-        weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT
-    )
+    model = fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
     input_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(input_features, num_classes=2)
     return model
@@ -107,8 +111,10 @@ def train_one_epoch(model, loader, optimizer):
     total_loss = 0.0
     for images, targets in loader:
         images = [image.to(DEVICE) for image in images]
-        targets = [{key: value.to(DEVICE) for key, value in target.items()}
-                   for target in targets]
+        targets = [
+            {key: value.to(DEVICE) for key, value in target.items()}
+            for target in targets
+        ]
         loss_dict = model(images, targets)
         loss = sum(loss_dict.values())
         optimizer.zero_grad()
@@ -184,10 +190,14 @@ def main():
         if f1 > best_f1:
             best_f1 = f1
             torch.save(model.state_dict(), CHECKPOINT)
-        print(f"epoch={epoch:02d} train_loss={train_loss:.4f} "
-              f"val_precision={precision:.3f} val_recall={recall:.3f} val_f1={f1:.3f}")
+        print(
+            f"epoch={epoch:02d} train_loss={train_loss:.4f} "
+            f"val_precision={precision:.3f} val_recall={recall:.3f} val_f1={f1:.3f}"
+        )
 
-    model.load_state_dict(torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True))
+    model.load_state_dict(
+        torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True)
+    )
     precision, recall, f1 = evaluate(model, test_loader)
     save_prediction(model, test_loader)
     print(f"test_precision={precision:.3f} test_recall={recall:.3f} test_f1={f1:.3f}")

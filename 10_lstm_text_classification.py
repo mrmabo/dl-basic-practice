@@ -28,9 +28,7 @@ def tokenize(text):
 
 def load_rows():
     if not DATA_PATH.exists():
-        raise FileNotFoundError(
-            "Run: python download_data/download_10_sms_spam.py"
-        )
+        raise FileNotFoundError("Run: python download_data/download_10_sms_spam.py")
     rows = []
     with DATA_PATH.open(encoding="utf-8") as file:
         for line in file:
@@ -95,7 +93,9 @@ def run_epoch(model, loader, loss_fn, optimizer=None):
             logits = model(tokens, lengths)
             loss = loss_fn(logits, labels)
             if training:
-                optimizer.zero_grad(); loss.backward(); optimizer.step()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
             loss_sum += loss.item() * len(labels)
             correct += ((logits >= 0) == labels.bool()).sum().item()
             count += len(labels)
@@ -111,16 +111,29 @@ def predict_text(model, vocab, text):
 
 
 def main():
-    random.seed(SEED); torch.manual_seed(SEED); CHECKPOINT.parent.mkdir(exist_ok=True)
+    random.seed(SEED)
+    torch.manual_seed(SEED)
+    CHECKPOINT.parent.mkdir(exist_ok=True)
     rows = load_rows()
-    train_rows, temp_rows = train_test_split(rows, test_size=0.3, random_state=SEED,
-                                              stratify=[label for _, label in rows])
-    val_rows, test_rows = train_test_split(temp_rows, test_size=0.5, random_state=SEED,
-                                            stratify=[label for _, label in temp_rows])
+    train_rows, temp_rows = train_test_split(
+        rows, test_size=0.3, random_state=SEED, stratify=[label for _, label in rows]
+    )
+    val_rows, test_rows = train_test_split(
+        temp_rows,
+        test_size=0.5,
+        random_state=SEED,
+        stratify=[label for _, label in temp_rows],
+    )
     vocab = build_vocab([text for text, _ in train_rows])
-    loaders = [DataLoader(SMSDataset(split, vocab), BATCH_SIZE, shuffle=(i == 0),
-                          collate_fn=collate_batch)
-               for i, split in enumerate([train_rows, val_rows, test_rows])]
+    loaders = [
+        DataLoader(
+            SMSDataset(split, vocab),
+            BATCH_SIZE,
+            shuffle=(i == 0),
+            collate_fn=collate_batch,
+        )
+        for i, split in enumerate([train_rows, val_rows, test_rows])
+    ]
     train_loader, val_loader, test_loader = loaders
 
     model = TextClassifier(len(vocab)).to(DEVICE)
@@ -133,8 +146,10 @@ def main():
         if val_loss < best:
             best = val_loss
             torch.save({"model": model.state_dict(), "vocab": vocab}, CHECKPOINT)
-        print(f"epoch={epoch:02d} train_loss={train_loss:.4f} train_acc={train_acc:.3f} "
-              f"val_loss={val_loss:.4f} val_acc={val_acc:.3f}")
+        print(
+            f"epoch={epoch:02d} train_loss={train_loss:.4f} train_acc={train_acc:.3f} "
+            f"val_loss={val_loss:.4f} val_acc={val_acc:.3f}"
+        )
 
     saved = torch.load(CHECKPOINT, map_location=DEVICE, weights_only=False)
     model.load_state_dict(saved["model"])

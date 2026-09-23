@@ -59,6 +59,7 @@ def make_collate_fn(tokenizer):
         padded = tokenizer.pad(batch, padding=True, return_tensors="pt")
         padded["labels"] = labels
         return padded
+
     return collate_fn
 
 
@@ -144,15 +145,21 @@ def main():
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             torch.save(model.state_dict(), CHECKPOINT)
-        print(f"epoch={epoch:02d} train_loss={train_loss:.4f} train_acc={train_acc:.3f} "
-              f"val_loss={val_loss:.4f} val_acc={val_acc:.3f}")
+        print(
+            f"epoch={epoch:02d} train_loss={train_loss:.4f} train_acc={train_acc:.3f} "
+            f"val_loss={val_loss:.4f} val_acc={val_acc:.3f}"
+        )
 
-    model.load_state_dict(torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True))
+    model.load_state_dict(
+        torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True)
+    )
     test_loss, test_acc = run_epoch(model, test_loader, loss_fn)
     text = "Congratulations! You won a free prize. Call now."
     probabilities = predict_text(model, tokenizer, text)
     print(f"test_loss={test_loss:.4f} test_acc={test_acc:.3f}")
-    print(f"ham_probability={probabilities[0]:.3f} spam_probability={probabilities[1]:.3f}")
+    print(
+        f"ham_probability={probabilities[0]:.3f} spam_probability={probabilities[1]:.3f}"
+    )
 
 
 if __name__ == "__main__":
