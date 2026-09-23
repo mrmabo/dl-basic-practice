@@ -35,7 +35,7 @@ def build_dataloaders():
         test_set = MNIST(DATA_DIR, train=False, transform=transform, download=False)
     except RuntimeError as error:
         raise FileNotFoundError(
-            "Run: python stage2_applied_projects/download_data/download_08_mnist.py"
+            "Run: python download_data/download_08_mnist.py"
         ) from error
 
     train_set, val_set = random_split(

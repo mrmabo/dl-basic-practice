@@ -25,7 +25,7 @@ CHECKPOINT = ROOT / "checkpoints" / "12_multistep_lstm.pt"
 def load_values():
     if not DATA_PATH.exists():
         raise FileNotFoundError(
-            "Run: python stage2_applied_projects/download_data/download_12_etth1.py"
+            "Run: python download_data/download_12_etth1.py"
         )
     with DATA_PATH.open(newline="", encoding="utf-8") as file:
         rows = list(csv.DictReader(file))

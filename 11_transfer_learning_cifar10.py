@@ -36,7 +36,7 @@ def build_dataloaders():
         test_set = CIFAR10(DATA_DIR, train=False, transform=transforms(False), download=False)
     except RuntimeError as error:
         raise FileNotFoundError(
-            "Run: python stage2_applied_projects/download_data/download_11_cifar10.py"
+            "Run: python download_data/download_11_cifar10.py"
         ) from error
     indices = torch.randperm(len(augmented), generator=torch.Generator().manual_seed(SEED))
     train_indices, val_indices = indices[:-5_000], indices[-5_000:]

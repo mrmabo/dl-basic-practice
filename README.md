@@ -1,72 +1,79 @@
 # Deep Learning Basic Practice
 
-这个仓库按照“基础训练闭环 -> 应用型项目 -> 论文复现”分成三个阶段：
+这个仓库使用“一个 Python 文件对应一个完整流程”的方式训练深度学习编码能力。所有训练流程按编号放在根目录，所有公开数据下载脚本统一放在 `download_data/`。
 
-| 目录 | 阶段 | 目标 |
-|---|---|---|
-| [`stage1_basic_flows/`](stage1_basic_flows/) | 第一阶段 | 熟练写出 Dataset、DataLoader、训练、验证、checkpoint 和 inference |
-| [`stage2_applied_projects/`](stage2_applied_projects/) | 第二阶段 | 掌握回归、分割、NLP、迁移学习和多步预测 |
-| [`stage3_paper_reproduction/`](stage3_paper_reproduction/) | 第三阶段 | 从论文实现模型，完成对比、消融和可视化 |
+## 学习阶段
 
-## 1. 创建 Conda 环境
+- [第一阶段：基础训练闭环](STAGE_1_BASIC_FLOWS.md)：01–07
+- [第二阶段：主流深度学习任务](STAGE_2_MAINSTREAM_FLOWS.md)：08–12，后续扩展到15
+- [第三阶段：强化学习流程](STAGE_3_REINFORCEMENT_LEARNING.md)：未来实现
+
+## 创建 Conda 环境
 
 推荐 Python 3.11：
 
 ```bash
 conda create -n py311-dl-basic python=3.11 -y
 conda activate py311-dl-basic
-```
-
-确认当前解释器：
-
-```bash
-python --version
-python -c "import sys; print(sys.executable)"
-```
-
-## 2. 安装依赖
-
-进入仓库根目录：
-
-```bash
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-如果希望在 NVIDIA GPU 上训练，应根据 PyTorch 官方安装页面选择与本机驱动匹配的安装命令，然后再安装其余依赖。验证环境：
+检查环境：
 
 ```bash
-python -c "import torch, torchvision, numpy, sklearn; print('torch:', torch.__version__); print('torchvision:', torchvision.__version__); print('CUDA:', torch.cuda.is_available())"
+python --version
+python -c "import sys, torch, torchvision; print(sys.executable); print('torch:', torch.__version__); print('torchvision:', torchvision.__version__); print('CUDA:', torch.cuda.is_available())"
 ```
 
-## 3. 开始训练
+## 下载数据与开始训练
 
-建议先完成第一阶段，再进入第二阶段。每个阶段的 README 包含数据下载和运行命令：
-
-- [第一阶段说明](stage1_basic_flows/README.md)
-- [第二阶段说明](stage2_applied_projects/README.md)
-- [第三阶段说明](stage3_paper_reproduction/README.md)
-
-示例：
+所有命令都从仓库根目录运行。示例：
 
 ```bash
-python stage1_basic_flows/download_data/download_01_mlp_wine.py
-python stage1_basic_flows/01_mlp_classification.py
+python download_data/download_01_mlp_wine.py
+python 01_mlp_classification.py
 ```
 
 第二阶段示例：
 
 ```bash
-python stage2_applied_projects/download_data/download_10_sms_spam.py
-python stage2_applied_projects/10_lstm_text_classification.py
+python download_data/download_09_oxford_pet.py
+python 09_unet_image_segmentation.py
 ```
 
-所有数据、checkpoint 和模型权重都被 `.gitignore` 排除，不会提交到 GitHub。
+## 当前流程
 
-## 推荐练习节奏
+| 编号 | 流程 | 阶段 |
+|---|---|---|
+| 01 | MLP 表格分类 | 第一阶段 |
+| 02 | CNN 图像分类 | 第一阶段 |
+| 03 | LSTM 单步时序预测 | 第一阶段 |
+| 04 | Transformer 时序预测 | 第一阶段 |
+| 05 | Autoencoder 异常检测 | 第一阶段 |
+| 06 | RNN 序列分类 | 第一阶段 |
+| 07 | GNN 节点分类 | 第一阶段 |
+| 08 | CNN 图像回归 | 第二阶段 |
+| 09 | U-Net 图像分割 | 第二阶段 |
+| 10 | Embedding + LSTM 文本分类 | 第二阶段 |
+| 11 | ResNet18 迁移学习 | 第二阶段 |
+| 12 | 多变量多步时序预测 | 第二阶段 |
 
-```text
-运行并理解 -> 只看标题重写 -> 从空白文件重写 -> 修改任务 -> 记录实验
+## 练习方法
+
+每天新建一个空白 Python 文件，只保留：
+
+```python
+# imports
+# config
+# data loading
+# dataset and dataloader
+# model
+# loss and optimizer
+# training
+# evaluation
+# checkpoint
+# inference
 ```
 
-不要把“记住所有 API”当作目标。目标是能够独立组织数据、追踪 tensor shape、完成训练闭环，并能定位 shape、dtype、device 和 data leakage 问题。
+先独立完成，再与编号脚本对照。重点检查 tensor shape、dtype、device、数据划分和 data leakage。数据、checkpoint 和模型权重均由 `.gitignore` 排除。

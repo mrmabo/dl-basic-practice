@@ -29,7 +29,7 @@ def tokenize(text):
 def load_rows():
     if not DATA_PATH.exists():
         raise FileNotFoundError(
-            "Run: python stage2_applied_projects/download_data/download_10_sms_spam.py"
+            "Run: python download_data/download_10_sms_spam.py"
         )
     rows = []
     with DATA_PATH.open(encoding="utf-8") as file:

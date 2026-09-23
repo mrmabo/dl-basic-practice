@@ -30,7 +30,7 @@ class PetSegmentationDataset(Dataset):
             )
         except RuntimeError as error:
             raise FileNotFoundError(
-                "Run: python stage2_applied_projects/download_data/download_09_oxford_pet.py"
+                "Run: python download_data/download_09_oxford_pet.py"
             ) from error
 
     def __len__(self):
