@@ -3,9 +3,11 @@
 import os
 import random
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
+from PIL import Image
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision.datasets import OxfordIIITPet
@@ -38,9 +40,10 @@ class PetSegmentationDataset(Dataset):
 
     def __getitem__(self, index):
         image, mask = self.dataset[index]
-        image = resize(image, [IMAGE_SIZE, IMAGE_SIZE], antialias=True)
+        image = cast(Image.Image, image)
+        mask = cast(Image.Image, mask)
+        image = to_tensor(resize(image, [IMAGE_SIZE, IMAGE_SIZE], antialias=True))
         mask = resize(mask, [IMAGE_SIZE, IMAGE_SIZE], InterpolationMode.NEAREST)
-        image = to_tensor(image)
         # Original trimaps: 1=pet, 2=background, 3=border. Treat pet and border as foreground.
         mask = (pil_to_tensor(mask) != 2).float()
         return image, mask

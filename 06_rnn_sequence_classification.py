@@ -100,6 +100,11 @@ def build_dataloaders():
         stratify=all_train_y,
     )
 
+    train_x = np.asarray(train_x, dtype=np.float32)
+    val_x = np.asarray(val_x, dtype=np.float32)
+    train_y = np.asarray(train_y, dtype=np.int64)
+    val_y = np.asarray(val_y, dtype=np.int64)
+
     mean = train_x.mean()
     std = train_x.std()
     std = std if std > 0 else 1.0

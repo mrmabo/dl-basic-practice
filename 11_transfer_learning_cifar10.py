@@ -6,7 +6,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 from torchvision.models import ResNet18_Weights, resnet18
 from torchvision.transforms import (

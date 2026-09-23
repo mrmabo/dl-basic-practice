@@ -7,7 +7,6 @@ from pathlib import Path
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
-from sklearn.utils import shuffle
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
@@ -91,13 +90,14 @@ def build_dataloaders():
             random_state=SEED,
         )
     )
+    train_features = np.asarray(train_features, dtype=np.float32)
+    val_features = np.asarray(val_features, dtype=np.float32)
+    normal_test_features = np.asarray(normal_test_features, dtype=np.float32)
     test_features = np.concatenate([normal_test_features, anomaly_features], axis=0)
     test_labels = np.concatenate([normal_test_labels, anomaly_labels], axis=0)
-    test_features, test_labels = shuffle(
-        test_features,
-        test_labels,
-        random_state=SEED,
-    )
+    permutation = np.random.default_rng(SEED).permutation(len(test_features))
+    test_features = test_features[permutation]
+    test_labels = test_labels[permutation]
 
     mean = train_features.mean(axis=0)
     std = train_features.std(axis=0)

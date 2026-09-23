@@ -116,7 +116,7 @@ def train_one_epoch(model, loader, optimizer):
             for target in targets
         ]
         loss_dict = model(images, targets)
-        loss = sum(loss_dict.values())
+        loss = torch.stack(list(loss_dict.values())).sum()
         optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)

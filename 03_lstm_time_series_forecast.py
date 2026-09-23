@@ -80,6 +80,10 @@ def build_dataloaders():
         shuffle=False,
     )
 
+    train_raw = np.asarray(train_raw, dtype=np.float32)
+    val_raw = np.asarray(val_raw, dtype=np.float32)
+    test_raw = np.asarray(test_raw, dtype=np.float32)
+
     # 时间序列不能随机打乱；标准化统计量也只能来自较早的训练区间。
     mean = train_raw.mean()
     std = train_raw.std()

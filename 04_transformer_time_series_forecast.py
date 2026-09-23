@@ -44,7 +44,9 @@ def load_etth1():
         for row in csv.DictReader(file):
             timestamps.append(row["date"])
             rows.append([float(row[name]) for name in FEATURE_NAMES])
-    return timestamps, np.asarray(rows, dtype=np.float32)  # timestamps: [N]；数据: [N, 7]
+    return timestamps, np.asarray(
+        rows, dtype=np.float32
+    )  # timestamps: [N]；数据: [N, 7]
 
 
 class ETTH1Dataset(Dataset):
@@ -97,6 +99,10 @@ def build_dataloaders():
         shuffle=False,
     )
 
+    train_raw = np.asarray(train_raw, dtype=np.float32)
+    val_raw = np.asarray(val_raw, dtype=np.float32)
+    test_raw = np.asarray(test_raw, dtype=np.float32)
+
     # 时间序列必须按时间顺序划分，不能使用 shuffle 或 stratify。
     mean = train_raw.mean(axis=0)  # [N_train, 7] -> [7]
     std = train_raw.std(axis=0)  # [N_train, 7] -> [7]
@@ -133,7 +139,9 @@ class TransformerForecaster(nn.Module):
         super().__init__()
         self.horizon = horizon
         self.num_targets = num_targets
-        self.input_projection = nn.Linear(input_features, d_model)  # [..., 7] -> [..., 32]
+        self.input_projection = nn.Linear(
+            input_features, d_model
+        )  # [..., 7] -> [..., 32]
         self.position = nn.Parameter(  # 可学习位置编码，shape: [1, LOOKBACK, 32]
             torch.randn(1, LOOKBACK, d_model) * 0.02
         )
@@ -153,7 +161,9 @@ class TransformerForecaster(nn.Module):
 
     def forward(self, features):
         projected = self.input_projection(features)  # [B, L, 7] -> [B, L, 32]
-        position = self.position[:, : features.size(1)]  # [1, LOOKBACK, 32] -> [1, L, 32]
+        position = self.position[
+            :, : features.size(1)
+        ]  # [1, LOOKBACK, 32] -> [1, L, 32]
         hidden = projected + position  # [B, L, 32] + [1, L, 32] -> [B, L, 32]
         encoded = self.encoder(hidden)  # [B, L, 32] -> [B, L, 32]
         last_hidden = encoded[:, -1]  # [B, L, 32] -> [B, 32]
@@ -170,8 +180,12 @@ def evaluate(model, loader, loss_fn):
         for features, targets in loader:  # [B, LOOKBACK, 7], [B, HORIZON, num_targets]
             features = features.to(DEVICE)  # shape不变: [B, LOOKBACK, 7]
             targets = targets.to(DEVICE)  # shape不变: [B, HORIZON, num_targets]
-            predictions = model(features)  # [B, LOOKBACK, 7] -> [B, HORIZON, num_targets]
-            total_loss += loss_fn(predictions, targets).item() * features.size(0)  # 标量
+            predictions = model(
+                features
+            )  # [B, LOOKBACK, 7] -> [B, HORIZON, num_targets]
+            total_loss += loss_fn(predictions, targets).item() * features.size(
+                0
+            )  # 标量
     return total_loss / len(loader.dataset)
 
 
@@ -186,11 +200,16 @@ def main():
     for epoch in range(1, EPOCHS + 1):
         model.train()
         train_loss = 0.0
-        for features, targets in train_loader:  # [B, LOOKBACK, 7], [B, HORIZON, num_targets]
+        for (
+            features,
+            targets,
+        ) in train_loader:  # [B, LOOKBACK, 7], [B, HORIZON, num_targets]
             features = features.to(DEVICE)  # shape不变: [B, LOOKBACK, 7]
             targets = targets.to(DEVICE)  # shape不变: [B, HORIZON, num_targets]
             optimizer.zero_grad()
-            predictions = model(features)  # [B, LOOKBACK, 7] -> [B, HORIZON, num_targets]
+            predictions = model(
+                features
+            )  # [B, LOOKBACK, 7] -> [B, HORIZON, num_targets]
             loss = loss_fn(predictions, targets)  # 两个同形状Tensor -> 标量MSE
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -215,12 +234,18 @@ def main():
     features, targets = next(iter(test_loader))  # [B, LOOKBACK, 7], [B, HORIZON, 2]
     model.eval()
     with torch.no_grad():
-        predictions = model(features[:1].to(DEVICE)).cpu().numpy()  # [1, LOOKBACK, 7] -> [1, HORIZON, 2]
+        predictions = (
+            model(features[:1].to(DEVICE)).cpu().numpy()
+        )  # [1, LOOKBACK, 7] -> [1, HORIZON, 2]
 
     target_mean = mean[TARGET_INDICES]  # [7] -> [2]
     target_std = std[TARGET_INDICES]  # [7] -> [2]
-    predictions = predictions * target_std + target_mean  # [1, HORIZON, 2] -> [1, HORIZON, 2]
-    actual = targets[:1].numpy() * target_std + target_mean  # [1, HORIZON, 2] -> [1, HORIZON, 2]
+    predictions = (
+        predictions * target_std + target_mean
+    )  # [1, HORIZON, 2] -> [1, HORIZON, 2]
+    actual = (
+        targets[:1].numpy() * target_std + target_mean
+    )  # [1, HORIZON, 2] -> [1, HORIZON, 2]
 
     for step, timestamp in enumerate(test_times[:HORIZON]):
         values = " ".join(

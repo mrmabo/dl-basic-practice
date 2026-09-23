@@ -106,6 +106,15 @@ def build_dataloaders():
         stratify=temp_targets if TASK == "classification" else None,
     )
 
+    # sklearn的返回类型兼容多种array-like；显式转换后Pylance和后续计算
+    # 都能确定这里使用的是NumPy数组。
+    train_features = np.asarray(train_features, dtype=np.float32)
+    val_features = np.asarray(val_features, dtype=np.float32)
+    test_features = np.asarray(test_features, dtype=np.float32)
+    train_targets = np.asarray(train_targets)
+    val_targets = np.asarray(val_targets)
+    test_targets = np.asarray(test_targets)
+
     # 只使用训练集统计量标准化，避免验证集和测试集信息泄漏。
     mean = train_features.mean(axis=0)
     std = train_features.std(axis=0)
