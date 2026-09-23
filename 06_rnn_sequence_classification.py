@@ -58,7 +58,7 @@ class SequenceDataset(Dataset):
 
 def collate_sequences(batch):
     sequences, labels, lengths = zip(*batch)
-    padded = pad_sequence(sequences, batch_first=True)
+    padded = pad_sequence(list(sequences), batch_first=True)
     return padded, torch.stack(labels), torch.tensor(lengths, dtype=torch.long)
 
 
