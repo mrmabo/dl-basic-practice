@@ -11,8 +11,7 @@ from PIL import Image
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision.datasets import OxfordIIITPet
-from torchvision.transforms import InterpolationMode
-from torchvision.transforms.functional import pil_to_tensor, resize, to_tensor
+from torchvision.transforms.functional import pil_to_tensor, to_tensor
 
 SEED = 42
 IMAGE_SIZE = 128
@@ -42,8 +41,10 @@ class PetSegmentationDataset(Dataset):
         image, mask = self.dataset[index]
         image = cast(Image.Image, image)
         mask = cast(Image.Image, mask)
-        image = to_tensor(resize(image, [IMAGE_SIZE, IMAGE_SIZE], antialias=True))
-        mask = resize(mask, [IMAGE_SIZE, IMAGE_SIZE], InterpolationMode.NEAREST)
+        output_size = (IMAGE_SIZE, IMAGE_SIZE)
+        image = image.resize(output_size, Image.Resampling.BILINEAR)
+        mask = mask.resize(output_size, Image.Resampling.NEAREST)
+        image = to_tensor(image)
         # Original trimaps: 1=pet, 2=background, 3=border. Treat pet and border as foreground.
         mask = (pil_to_tensor(mask) != 2).float()
         return image, mask

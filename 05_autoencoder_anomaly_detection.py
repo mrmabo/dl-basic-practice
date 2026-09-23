@@ -150,6 +150,7 @@ def main():
     for epoch in range(1, EPOCHS + 1):
         model.train()
         train_loss = 0.0
+        train_count = 0
         for features, _ in train_loader:
             features = features.to(DEVICE)
             model_inputs = features
@@ -160,6 +161,7 @@ def main():
             loss.backward()
             optimizer.step()
             train_loss += loss.item() * features.size(0)
+            train_count += features.size(0)
 
         val_scores, _ = reconstruction_scores(model, val_loader)
         val_loss = val_scores.mean().item()
@@ -169,7 +171,7 @@ def main():
         if epoch == 1 or epoch % 5 == 0:
             print(
                 f"epoch={epoch:02d} "
-                f"train_mse={train_loss / len(train_loader.dataset):.5f} "
+                f"train_mse={train_loss / train_count:.5f} "
                 f"val_mse={val_loss:.5f}"
             )
 

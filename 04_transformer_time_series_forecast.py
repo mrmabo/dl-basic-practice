@@ -200,6 +200,7 @@ def main():
     for epoch in range(1, EPOCHS + 1):
         model.train()
         train_loss = 0.0
+        train_count = 0
         for (
             features,
             targets,
@@ -215,6 +216,7 @@ def main():
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             train_loss += loss.item() * features.size(0)
+            train_count += features.size(0)
 
         val_loss = evaluate(model, val_loader, loss_fn)
         if val_loss < best_val_loss:
@@ -222,7 +224,7 @@ def main():
             torch.save(model.state_dict(), CHECKPOINT_PATH)
         print(
             f"epoch={epoch:02d} "
-            f"train_mse={train_loss / len(train_loader.dataset):.5f} "
+            f"train_mse={train_loss / train_count:.5f} "
             f"val_mse={val_loss:.5f}"
         )
 

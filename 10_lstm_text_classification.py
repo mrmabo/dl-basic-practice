@@ -62,7 +62,7 @@ class SMSDataset(Dataset):
 def collate_batch(batch):
     sequences, labels = zip(*batch)
     lengths = torch.tensor([len(sequence) for sequence in sequences])
-    padded = pad_sequence(sequences, batch_first=True, padding_value=PAD)
+    padded = pad_sequence(list(sequences), batch_first=True, padding_value=PAD)
     return padded, lengths, torch.stack(labels)
 
 

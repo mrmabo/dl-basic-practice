@@ -85,9 +85,9 @@ def build_dataloaders():
         len(base_dataset), generator=torch.Generator().manual_seed(SEED)
     )
     train_indices, val_indices, test_indices = (
-        indices[:120],
-        indices[120:150],
-        indices[150:],
+        indices[:120].tolist(),
+        indices[120:150].tolist(),
+        indices[150:].tolist(),
     )
     train_set = Subset(PennFudanDataset(augment=True), train_indices)
     val_set = Subset(PennFudanDataset(), val_indices)

@@ -28,11 +28,22 @@ CHECKPOINT = ROOT / "checkpoints" / "11_transfer_resnet18.pt"
 
 
 def transforms(training):
-    steps = [Resize((128, 128))]
     if training:
-        steps.append(RandomHorizontalFlip())
-    steps.extend([ToTensor(), Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-    return Compose(steps)
+        return Compose(
+            [
+                Resize((128, 128)),
+                RandomHorizontalFlip(),
+                ToTensor(),
+                Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ]
+        )
+    return Compose(
+        [
+            Resize((128, 128)),
+            ToTensor(),
+            Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ]
+    )
 
 
 def build_dataloaders():
@@ -53,7 +64,8 @@ def build_dataloaders():
     indices = torch.randperm(
         len(augmented), generator=torch.Generator().manual_seed(SEED)
     )
-    train_indices, val_indices = indices[:-5_000], indices[-5_000:]
+    train_indices = indices[:-5_000].tolist()
+    val_indices = indices[-5_000:].tolist()
     train_set = torch.utils.data.Subset(augmented, train_indices)
     val_set = torch.utils.data.Subset(evaluation, val_indices)
     return (

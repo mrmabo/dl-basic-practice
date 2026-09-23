@@ -184,6 +184,7 @@ def main():
     for epoch in range(1, EPOCHS + 1):
         model.train()
         train_loss = 0.0
+        train_count = 0
         for features, labels, lengths in train_loader:
             features = features.to(DEVICE)
             labels = labels.to(DEVICE)
@@ -193,6 +194,7 @@ def main():
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             train_loss += loss.item() * features.size(0)
+            train_count += features.size(0)
 
         val_loss, val_acc = evaluate(model, val_loader, loss_fn)
         if val_loss < best_val_loss:
@@ -200,7 +202,7 @@ def main():
             torch.save(model.state_dict(), CHECKPOINT_PATH)
         print(
             f"epoch={epoch:02d} "
-            f"train_loss={train_loss / len(train_loader.dataset):.4f} "
+            f"train_loss={train_loss / train_count:.4f} "
             f"val_loss={val_loss:.4f} val_acc={val_acc:.3f}"
         )
 
