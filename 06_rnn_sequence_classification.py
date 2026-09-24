@@ -1,6 +1,5 @@
 """完整流程 6：使用 UCR SyntheticControl 训练固定或可变长度 RNN 分类模型。"""
 
-import argparse
 import random
 from pathlib import Path
 
@@ -14,6 +13,7 @@ from torch.utils.data import DataLoader, Dataset
 SEED = 42
 BATCH_SIZE = 32
 EPOCHS = 30
+VARIABLE_LENGTH = False  # 改为 True：随机截短序列，练习可变长度 RNN
 MIN_SEQUENCE_LENGTH = 30
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
@@ -171,28 +171,20 @@ def evaluate(model, loader, loss_fn):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--variable-length",
-        action="store_true",
-        help="随机截短每条原本等长的序列；默认使用完整长度",
-    )
-    parser.add_argument("--epochs", type=int, default=EPOCHS)
-    args = parser.parse_args()
-    if args.epochs < 1:
-        parser.error("--epochs 必须大于 0")
-
-    mode = "variable" if args.variable_length else "fixed"
+    mode = "variable" if VARIABLE_LENGTH else "fixed"
     checkpoint_path = ROOT / f"best_rnn_{mode}.pt"
     set_seed()
-    train_loader, val_loader, test_loader = build_dataloaders(args.variable_length)
-    print(f"mode={mode} epochs={args.epochs} train_lengths={train_loader.dataset.lengths[:8].tolist()}")
+    train_loader, val_loader, test_loader = build_dataloaders(VARIABLE_LENGTH)
+    print(
+        f"mode={mode} epochs={EPOCHS} "
+        f"train_lengths={train_loader.dataset.lengths[:8].tolist()}"
+    )
     model = RNNClassifier().to(DEVICE)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     best_val_loss = float("inf")
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(1, EPOCHS + 1):
         model.train()
         train_loss = 0.0
         train_count = 0
