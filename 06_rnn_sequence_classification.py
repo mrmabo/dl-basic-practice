@@ -1,5 +1,12 @@
 """完整流程 6：使用 UCR SyntheticControl 训练固定或可变长度 RNN 分类模型。"""
 
+"""
+单个样本：[L_i, 1] + 标量 label + 整数 L_i
+      ↓ collate：补齐并组 batch
+一个 batch：[B, L_max, 1] + [B] labels + [B] lengths
+      ↓ pack_padded_sequence(features, lengths)
+RNN 根据真实长度处理 → 每条序列输出一个类别预测
+"""
 import random
 from pathlib import Path
 
