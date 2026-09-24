@@ -38,10 +38,10 @@ def set_seed():
 
 
 class SequenceDataset(Dataset):
-    def __init__(self, features, labels, variable_length=False, seed=SEED):
+    def __init__(self, features, labels, seed=SEED):
         self.features = torch.tensor(features, dtype=torch.float32)
         self.labels = torch.tensor(labels, dtype=torch.long)
-        if variable_length:
+        if VARIABLE_LENGTH:
             rng = np.random.default_rng(seed)
             self.lengths = rng.integers(
                 MIN_SEQUENCE_LENGTH,
@@ -88,7 +88,7 @@ def load_ucr_file(path):
 #     return np.array(train_indices), np.array(val_indices)
 
 
-def build_dataloaders(variable_length=False):
+def build_dataloaders():
     if not TRAIN_PATH.exists() or not TEST_PATH.exists():
         raise FileNotFoundError(
             f"没有找到 {TRAIN_PATH} 或 {TEST_PATH}\n"
@@ -116,9 +116,9 @@ def build_dataloaders(variable_length=False):
     val_x = (val_x - mean) / std
     test_x = (test_x - mean) / std
 
-    train_dataset = SequenceDataset(train_x, train_y, variable_length, seed=SEED)
-    val_dataset = SequenceDataset(val_x, val_y, variable_length, seed=SEED + 1)
-    test_dataset = SequenceDataset(test_x, test_y, variable_length, seed=SEED + 2)
+    train_dataset = SequenceDataset(train_x, train_y, seed=SEED)
+    val_dataset = SequenceDataset(val_x, val_y, seed=SEED + 1)
+    test_dataset = SequenceDataset(test_x, test_y, seed=SEED + 2)
     train_loader = DataLoader(
         train_dataset,
         BATCH_SIZE,
@@ -181,7 +181,7 @@ def main():
     mode = "variable" if VARIABLE_LENGTH else "fixed"
     checkpoint_path = ROOT / f"best_rnn_{mode}.pt"
     set_seed()
-    train_loader, val_loader, test_loader = build_dataloaders(VARIABLE_LENGTH)
+    train_loader, val_loader, test_loader = build_dataloaders()
     print(
         f"mode={mode} epochs={EPOCHS} "
         f"train_lengths={train_loader.dataset.lengths[:8].tolist()}"
