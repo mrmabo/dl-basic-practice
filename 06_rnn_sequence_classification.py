@@ -38,11 +38,11 @@ def set_seed():
 
 
 class SequenceDataset(Dataset):
-    def __init__(self, features, labels, seed=SEED):
+    def __init__(self, features, labels):
         self.features = torch.tensor(features, dtype=torch.float32)
         self.labels = torch.tensor(labels, dtype=torch.long)
         if VARIABLE_LENGTH:
-            rng = np.random.default_rng(seed)
+            rng = np.random.default_rng(SEED)
             self.lengths = rng.integers(
                 MIN_SEQUENCE_LENGTH,
                 self.features.size(1) + 1,
@@ -116,9 +116,9 @@ def build_dataloaders():
     val_x = (val_x - mean) / std
     test_x = (test_x - mean) / std
 
-    train_dataset = SequenceDataset(train_x, train_y, seed=SEED)
-    val_dataset = SequenceDataset(val_x, val_y, seed=SEED + 1)
-    test_dataset = SequenceDataset(test_x, test_y, seed=SEED + 2)
+    train_dataset = SequenceDataset(train_x, train_y)
+    val_dataset = SequenceDataset(val_x, val_y)
+    test_dataset = SequenceDataset(test_x, test_y)
     train_loader = DataLoader(
         train_dataset,
         BATCH_SIZE,
