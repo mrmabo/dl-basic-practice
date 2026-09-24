@@ -1,6 +1,6 @@
 """完整流程 6：使用 UCR SyntheticControl 训练固定或可变长度 RNN 分类模型。"""
 
-import os
+import argparse
 import random
 from pathlib import Path
 
@@ -13,16 +13,13 @@ from torch.utils.data import DataLoader, Dataset
 
 SEED = 42
 BATCH_SIZE = 32
-EPOCHS = int(os.getenv("EPOCHS", "30"))
-VARIABLE_LENGTH = os.getenv("VARIABLE_LENGTH", "0") == "1"
+EPOCHS = 30
 MIN_SEQUENCE_LENGTH = 30
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data" / "rnn_synthetic_control"
 TRAIN_PATH = DATA_DIR / "SyntheticControl_TRAIN.txt"
 TEST_PATH = DATA_DIR / "SyntheticControl_TEST.txt"
-MODE = "variable" if VARIABLE_LENGTH else "fixed"
-CHECKPOINT_PATH = ROOT / f"best_rnn_{MODE}.pt"
 
 
 def set_seed():
@@ -34,10 +31,10 @@ def set_seed():
 
 
 class SequenceDataset(Dataset):
-    def __init__(self, features, labels, seed=SEED):
+    def __init__(self, features, labels, variable_length=False, seed=SEED):
         self.features = torch.tensor(features, dtype=torch.float32)
         self.labels = torch.tensor(labels, dtype=torch.long)
-        if VARIABLE_LENGTH:
+        if variable_length:
             rng = np.random.default_rng(seed)
             self.lengths = rng.integers(
                 MIN_SEQUENCE_LENGTH,
@@ -84,7 +81,7 @@ def load_ucr_file(path):
 #     return np.array(train_indices), np.array(val_indices)
 
 
-def build_dataloaders():
+def build_dataloaders(variable_length=False):
     if not TRAIN_PATH.exists() or not TEST_PATH.exists():
         raise FileNotFoundError(
             f"没有找到 {TRAIN_PATH} 或 {TEST_PATH}\n"
@@ -112,9 +109,9 @@ def build_dataloaders():
     val_x = (val_x - mean) / std
     test_x = (test_x - mean) / std
 
-    train_dataset = SequenceDataset(train_x, train_y, seed=SEED)
-    val_dataset = SequenceDataset(val_x, val_y, seed=SEED + 1)
-    test_dataset = SequenceDataset(test_x, test_y, seed=SEED + 2)
+    train_dataset = SequenceDataset(train_x, train_y, variable_length, seed=SEED)
+    val_dataset = SequenceDataset(val_x, val_y, variable_length, seed=SEED + 1)
+    test_dataset = SequenceDataset(test_x, test_y, variable_length, seed=SEED + 2)
     train_loader = DataLoader(
         train_dataset,
         BATCH_SIZE,
@@ -174,14 +171,28 @@ def evaluate(model, loader, loss_fn):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--variable-length",
+        action="store_true",
+        help="随机截短每条原本等长的序列；默认使用完整长度",
+    )
+    parser.add_argument("--epochs", type=int, default=EPOCHS)
+    args = parser.parse_args()
+    if args.epochs < 1:
+        parser.error("--epochs 必须大于 0")
+
+    mode = "variable" if args.variable_length else "fixed"
+    checkpoint_path = ROOT / f"best_rnn_{mode}.pt"
     set_seed()
-    train_loader, val_loader, test_loader = build_dataloaders()
+    train_loader, val_loader, test_loader = build_dataloaders(args.variable_length)
+    print(f"mode={mode} epochs={args.epochs} train_lengths={train_loader.dataset.lengths[:8].tolist()}")
     model = RNNClassifier().to(DEVICE)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     best_val_loss = float("inf")
-    for epoch in range(1, EPOCHS + 1):
+    for epoch in range(1, args.epochs + 1):
         model.train()
         train_loss = 0.0
         train_count = 0
@@ -199,7 +210,7 @@ def main():
         val_loss, val_acc = evaluate(model, val_loader, loss_fn)
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), CHECKPOINT_PATH)
+            torch.save(model.state_dict(), checkpoint_path)
         print(
             f"epoch={epoch:02d} "
             f"train_loss={train_loss / train_count:.4f} "
@@ -207,10 +218,10 @@ def main():
         )
 
     model.load_state_dict(
-        torch.load(CHECKPOINT_PATH, map_location=DEVICE, weights_only=True)
+        torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
     )
     test_loss, test_acc = evaluate(model, test_loader, loss_fn)
-    print(f"mode={MODE} test_loss={test_loss:.4f} test_acc={test_acc:.3f}")
+    print(f"mode={mode} test_loss={test_loss:.4f} test_acc={test_acc:.3f}")
     features, labels, lengths = next(iter(test_loader))
     model.eval()
     with torch.no_grad():
