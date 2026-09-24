@@ -94,31 +94,31 @@ def build_dataloaders():
             f"没有找到 {TRAIN_PATH} 或 {TEST_PATH}\n"
             "请先运行：python download_data/download_06_rnn_synthetic_control.py"
         )
-    all_train_x, all_train_y = load_ucr_file(TRAIN_PATH)
-    test_x, test_y = load_ucr_file(TEST_PATH)
-    train_x, val_x, train_y, val_y = train_test_split(
-        all_train_x,
-        all_train_y,
+    all_train_features, all_train_labels = load_ucr_file(TRAIN_PATH)
+    test_features, test_labels = load_ucr_file(TEST_PATH)
+    train_features, val_features, train_labels, val_labels = train_test_split(
+        all_train_features,
+        all_train_labels,
         test_size=0.20,
         random_state=SEED,
-        stratify=all_train_y,
+        stratify=all_train_labels,
     )
 
-    train_x = np.asarray(train_x, dtype=np.float32)
-    val_x = np.asarray(val_x, dtype=np.float32)
-    train_y = np.asarray(train_y, dtype=np.int64)
-    val_y = np.asarray(val_y, dtype=np.int64)
+    train_features = np.asarray(train_features, dtype=np.float32)
+    val_features = np.asarray(val_features, dtype=np.float32)
+    train_labels = np.asarray(train_labels, dtype=np.int64)
+    val_labels = np.asarray(val_labels, dtype=np.int64)
 
-    mean = train_x.mean()
-    std = train_x.std()
+    mean = train_features.mean()
+    std = train_features.std()
     std = std if std > 0 else 1.0
-    train_x = (train_x - mean) / std
-    val_x = (val_x - mean) / std
-    test_x = (test_x - mean) / std
+    train_features = (train_features - mean) / std
+    val_features = (val_features - mean) / std
+    test_features = (test_features - mean) / std
 
-    train_dataset = SequenceDataset(train_x, train_y)
-    val_dataset = SequenceDataset(val_x, val_y)
-    test_dataset = SequenceDataset(test_x, test_y)
+    train_dataset = SequenceDataset(train_features, train_labels)
+    val_dataset = SequenceDataset(val_features, val_labels)
+    test_dataset = SequenceDataset(test_features, test_labels)
     train_loader = DataLoader(
         train_dataset,
         BATCH_SIZE,
