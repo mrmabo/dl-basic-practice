@@ -48,15 +48,14 @@ python 13_faster_rcnn_object_detection.py
 
 ## RNN 序列分类：切换长度模式
 
-从仓库根目录运行。默认使用固定长度；传入 `--variable-length` 后，对每条原本等长的序列随机截短一次，用来练习补齐与打包流程：
+在 `06_rnn_sequence_classification.py` 文件顶部设置 `VARIABLE_LENGTH = False`（固定长度）或 `VARIABLE_LENGTH = True`（随机截短原本等长的序列，用于练习可变长度）。需要调整训练轮数时直接修改 `EPOCHS`。保存文件后从仓库根目录运行：
 
 ```powershell
 python .\download_data\download_06_rnn_synthetic_control.py
-python .\06_rnn_sequence_classification.py --epochs 30
-python .\06_rnn_sequence_classification.py --variable-length --epochs 30
+python .\06_rnn_sequence_classification.py
 ```
 
-上述命令在 PowerShell 中可直接使用，也不需要设置环境变量。启动时会输出 `mode=fixed` 或 `mode=variable` 及部分训练样本的真实长度；训练结束会打印测试样本的 `lengths`。两个模式分别保存 `best_rnn_fixed.pt` 和 `best_rnn_variable.pt`。
+启动时会输出 `mode=fixed` 或 `mode=variable` 及部分训练样本的真实长度；训练结束会打印测试样本的 `lengths`。两个模式分别保存 `best_rnn_fixed.pt` 和 `best_rnn_variable.pt`。
 
 ## 当前流程
 
