@@ -1,4 +1,4 @@
-"""Stage 2-08: train a small U-Net for Oxford-IIIT Pet foreground segmentation."""
+"""Stage 2-08: train a four-level U-Net for Oxford-IIIT Pet foreground segmentation."""
 
 import os
 import random
@@ -15,12 +15,12 @@ from torchvision.transforms.functional import pil_to_tensor, to_tensor
 
 SEED = 42
 IMAGE_SIZE = 128
-BATCH_SIZE = 16
+BATCH_SIZE = 2
 EPOCHS = int(os.getenv("EPOCHS", "10"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data" / "unet_oxford_pet"
-CHECKPOINT = ROOT / "checkpoints" / "08_unet.pt"
+CHECKPOINT = ROOT / "checkpoints" / "08_unet_full.pt"
 
 
 class PetSegmentationDataset(Dataset):
@@ -51,36 +51,54 @@ class PetSegmentationDataset(Dataset):
 
 
 def conv_block(in_channels, out_channels):
+    """Two 3x3 convolutions and ReLUs, as in each block of the original U-Net."""
     return nn.Sequential(
-        nn.Conv2d(in_channels, out_channels, 3, padding=1),
-        nn.BatchNorm2d(out_channels),
-        nn.ReLU(),
-        nn.Conv2d(out_channels, out_channels, 3, padding=1),
-        nn.BatchNorm2d(out_channels),
-        nn.ReLU(),
+        nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+        nn.ReLU(inplace=True),
     )
 
 
 class UNet(nn.Module):
+    """Four down/up stages with 64->1024->64 channels and skip concatenations.
+
+    The paper used unpadded convolutions and cropped skip tensors. This version
+    uses padding=1 so 128x128 Pet images and masks retain identical spatial size.
+    """
+
     def __init__(self):
         super().__init__()
-        self.enc1 = conv_block(3, 32)
-        self.enc2 = conv_block(32, 64)
-        self.bridge = conv_block(64, 128)
-        self.pool = nn.MaxPool2d(2)
-        self.up2 = nn.ConvTranspose2d(128, 64, 2, stride=2)
-        self.dec2 = conv_block(128, 64)
-        self.up1 = nn.ConvTranspose2d(64, 32, 2, stride=2)
-        self.dec1 = conv_block(64, 32)
-        self.head = nn.Conv2d(32, 1, 1)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.enc1 = conv_block(3, 64)
+        self.enc2 = conv_block(64, 128)
+        self.enc3 = conv_block(128, 256)
+        self.enc4 = conv_block(256, 512)
+        self.bottleneck = conv_block(512, 1024)
+
+        self.up4 = nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2)
+        self.dec4 = conv_block(1024, 512)
+        self.up3 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2)
+        self.dec3 = conv_block(512, 256)
+        self.up2 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
+        self.dec2 = conv_block(256, 128)
+        self.up1 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
+        self.dec1 = conv_block(128, 64)
+        self.head = nn.Conv2d(64, 1, kernel_size=1)
 
     def forward(self, images):
-        skip1 = self.enc1(images)  # [B, 32, 128, 128]
-        skip2 = self.enc2(self.pool(skip1))  # [B, 64, 64, 64]
-        hidden = self.bridge(self.pool(skip2))  # [B, 128, 32, 32]
+        skip1 = self.enc1(images)                  # [B, 64, 128, 128]
+        skip2 = self.enc2(self.pool(skip1))        # [B, 128, 64, 64]
+        skip3 = self.enc3(self.pool(skip2))        # [B, 256, 32, 32]
+        skip4 = self.enc4(self.pool(skip3))        # [B, 512, 16, 16]
+        hidden = self.bottleneck(self.pool(skip4)) # [B, 1024, 8, 8]
+
+        hidden = self.dec4(torch.cat([self.up4(hidden), skip4], dim=1))
+        hidden = self.dec3(torch.cat([self.up3(hidden), skip3], dim=1))
         hidden = self.dec2(torch.cat([self.up2(hidden), skip2], dim=1))
         hidden = self.dec1(torch.cat([self.up1(hidden), skip1], dim=1))
-        return self.head(hidden)  # [B, 1, 128, 128]
+        return self.head(hidden)                   # [B, 1, 128, 128]
 
 
 def dice_score(logits, targets):
