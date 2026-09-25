@@ -45,6 +45,12 @@ python download_data/download_14_ddpm_mnist.py
 python 14_ddpm_image_generation.py
 ```
 
+## 08：U-Net 结构
+
+08 现在使用四次下采样、底部卷积块、四次上采样和四组对应层的 skip concatenation；通道从 64 增长到 1024 再逐层缩小。输入为 [B, 3, 128, 128]，输出为 [B, 1, 128, 128] 的二分类 logits。
+
+这是针对 Oxford-IIIT Pet 图片的完整对称 U-Net 结构。原论文使用无 padding 卷积，并裁剪编码器特征图后再拼接；本练习采用 padding=1，便于和同尺寸的标签直接计算 BCE loss。原论文的数据增强、边界加权损失及 overlap-tile 推理未在本流程实现。模型更大，默认 batch size 改为 2，权重保存在 `08_unet_full.pt`。
+
 ## 12：目标检测需要掌握
 
 ```text
