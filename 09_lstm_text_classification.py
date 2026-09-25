@@ -1,4 +1,4 @@
-"""Stage 2-10: tokenize SMS text, train an Embedding + LSTM spam classifier."""
+"""Stage 2-09: tokenize SMS text, train an Embedding + LSTM spam classifier."""
 
 import os
 import random
@@ -18,7 +18,7 @@ EPOCHS = int(os.getenv("EPOCHS", "10"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_PATH = ROOT / "data" / "sms_spam" / "SMSSpamCollection"
-CHECKPOINT = ROOT / "checkpoints" / "10_text_lstm.pt"
+CHECKPOINT = ROOT / "checkpoints" / "09_text_lstm.pt"
 PAD, UNK = 0, 1
 
 
@@ -28,7 +28,7 @@ def tokenize(text):
 
 def load_rows():
     if not DATA_PATH.exists():
-        raise FileNotFoundError("Run: python download_data/download_10_sms_spam.py")
+        raise FileNotFoundError("Run: python download_data/download_09_sms_spam.py")
     rows = []
     with DATA_PATH.open(encoding="utf-8") as file:
         for line in file:

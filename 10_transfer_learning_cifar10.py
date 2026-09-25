@@ -1,4 +1,4 @@
-"""Stage 2-11: ResNet18 transfer learning on CIFAR-10."""
+"""Stage 2-10: ResNet18 transfer learning on CIFAR-10."""
 
 import os
 import random
@@ -24,7 +24,7 @@ FINETUNE_EPOCHS = int(os.getenv("FINETUNE_EPOCHS", "2"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data" / "transfer_cifar10"
-CHECKPOINT = ROOT / "checkpoints" / "11_transfer_resnet18.pt"
+CHECKPOINT = ROOT / "checkpoints" / "10_transfer_resnet18.pt"
 
 
 def transforms(training):
@@ -59,7 +59,7 @@ def build_dataloaders():
         )
     except RuntimeError as error:
         raise FileNotFoundError(
-            "Run: python download_data/download_11_cifar10.py"
+            "Run: python download_data/download_10_cifar10.py"
         ) from error
     indices = torch.randperm(
         len(augmented), generator=torch.Generator().manual_seed(SEED)

@@ -1,4 +1,4 @@
-"""Flow 15: train a compact DDPM to generate MNIST-like images."""
+"""Flow 14: train a compact DDPM to generate MNIST-like images."""
 
 import math
 import os
@@ -19,8 +19,8 @@ TIME_STEPS = 200
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data" / "ddpm_mnist"
-CHECKPOINT = ROOT / "checkpoints" / "15_ddpm.pt"
-SAMPLE_PATH = ROOT / "checkpoints" / "15_ddpm_samples.png"
+CHECKPOINT = ROOT / "checkpoints" / "14_ddpm.pt"
+SAMPLE_PATH = ROOT / "checkpoints" / "14_ddpm_samples.png"
 
 
 class NoisePredictor(nn.Module):
@@ -113,7 +113,7 @@ def main():
         full_dataset = MNIST(DATA_DIR, train=True, transform=transform, download=False)
     except RuntimeError as error:
         raise FileNotFoundError(
-            "Run: python download_data/download_15_ddpm_mnist.py"
+            "Run: python download_data/download_14_ddpm_mnist.py"
         ) from error
     train_set, val_set = random_split(
         full_dataset,

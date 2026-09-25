@@ -5,7 +5,7 @@
 ## 学习阶段
 
 - [第一阶段：基础训练闭环](STAGE_1_BASIC_FLOWS.md)：01–07
-- [第二阶段：主流深度学习任务](STAGE_2_MAINSTREAM_FLOWS.md)：08–12，后续扩展到15
+- [第二阶段：主流深度学习任务](STAGE_2_MAINSTREAM_FLOWS.md)：08–14
 - [第三阶段：强化学习流程](STAGE_3_REINFORCEMENT_LEARNING.md)：未来实现
 
 ## 创建 Conda 环境
@@ -38,12 +38,12 @@ python 01_mlp_classification.py
 第二阶段示例：
 
 ```bash
-python download_data/download_09_oxford_pet.py
-python 09_unet_image_segmentation.py
+python download_data/download_08_oxford_pet.py
+python 08_unet_image_segmentation.py
 
 # 第二阶段后续流程示例
-python download_data/download_13_penn_fudan.py
-python 13_faster_rcnn_object_detection.py
+python download_data/download_12_penn_fudan.py
+python 12_faster_rcnn_object_detection.py
 ```
 
 ## RNN 序列分类：切换长度模式
@@ -68,14 +68,13 @@ python .\06_rnn_sequence_classification.py
 | 05 | Autoencoder 异常检测 | 第一阶段 |
 | 06 | RNN 序列分类 | 第一阶段 |
 | 07 | GNN 节点分类 | 第一阶段 |
-| 08 | CNN 图像回归 | 第二阶段 |
-| 09 | U-Net 图像分割 | 第二阶段 |
-| 10 | Embedding + LSTM 文本分类 | 第二阶段 |
-| 11 | ResNet18 迁移学习 | 第二阶段 |
-| 12 | 多变量多步时序预测 | 第二阶段 |
-| 13 | Faster R-CNN 目标检测 | 第二阶段 |
-| 14 | DistilBERT 文本微调 | 第二阶段 |
-| 15 | DDPM 图像生成 | 第二阶段 |
+| 08 | U-Net 图像分割 | 第二阶段 |
+| 09 | Embedding + LSTM 文本分类 | 第二阶段 |
+| 10 | ResNet18 迁移学习 | 第二阶段 |
+| 11 | 多变量多步时序预测 | 第二阶段 |
+| 12 | Faster R-CNN 目标检测 | 第二阶段 |
+| 13 | DistilBERT 文本微调 | 第二阶段 |
+| 14 | DDPM 图像生成 | 第二阶段 |
 
 ## 练习方法
 

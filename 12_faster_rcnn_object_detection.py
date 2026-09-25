@@ -1,4 +1,4 @@
-"""Flow 13: fine-tune Faster R-CNN for pedestrian object detection."""
+"""Flow 12: fine-tune Faster R-CNN for pedestrian object detection."""
 
 import os
 import random
@@ -24,8 +24,8 @@ IOU_THRESHOLD = 0.5
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data" / "penn_fudan_ped"
-CHECKPOINT = ROOT / "checkpoints" / "13_faster_rcnn.pt"
-PREDICTION_IMAGE = ROOT / "checkpoints" / "13_detection_prediction.png"
+CHECKPOINT = ROOT / "checkpoints" / "12_faster_rcnn.pt"
+PREDICTION_IMAGE = ROOT / "checkpoints" / "12_detection_prediction.png"
 
 
 class PennFudanDataset(Dataset):
@@ -34,7 +34,7 @@ class PennFudanDataset(Dataset):
         self.mask_dir = DATA_DIR / "PennFudanPed" / "PedMasks"
         if not self.image_dir.exists():
             raise FileNotFoundError(
-                "Run: python download_data/download_13_penn_fudan.py"
+                "Run: python download_data/download_12_penn_fudan.py"
             )
         self.images = sorted(self.image_dir.glob("*.png"))
         self.masks = sorted(self.mask_dir.glob("*.png"))

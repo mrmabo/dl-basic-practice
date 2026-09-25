@@ -1,4 +1,4 @@
-"""Stage 2-09: train a small U-Net for Oxford-IIIT Pet foreground segmentation."""
+"""Stage 2-08: train a small U-Net for Oxford-IIIT Pet foreground segmentation."""
 
 import os
 import random
@@ -20,7 +20,7 @@ EPOCHS = int(os.getenv("EPOCHS", "10"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data" / "unet_oxford_pet"
-CHECKPOINT = ROOT / "checkpoints" / "09_unet.pt"
+CHECKPOINT = ROOT / "checkpoints" / "08_unet.pt"
 
 
 class PetSegmentationDataset(Dataset):
@@ -31,7 +31,7 @@ class PetSegmentationDataset(Dataset):
             )
         except RuntimeError as error:
             raise FileNotFoundError(
-                "Run: python download_data/download_09_oxford_pet.py"
+                "Run: python download_data/download_08_oxford_pet.py"
             ) from error
 
     def __len__(self):
