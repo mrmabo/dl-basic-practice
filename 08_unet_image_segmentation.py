@@ -15,7 +15,7 @@ from torchvision.transforms.functional import pil_to_tensor, to_tensor
 
 SEED = 42
 IMAGE_SIZE = 128
-BATCH_SIZE = 2
+BATCH_SIZE = 64
 EPOCHS = int(os.getenv("EPOCHS", "10"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
