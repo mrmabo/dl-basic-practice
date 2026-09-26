@@ -88,17 +88,17 @@ class UNet(nn.Module):
         self.head = nn.Conv2d(64, 1, kernel_size=1)
 
     def forward(self, images):
-        skip1 = self.enc1(images)                  # [B, 64, 128, 128]
-        skip2 = self.enc2(self.pool(skip1))        # [B, 128, 64, 64]
-        skip3 = self.enc3(self.pool(skip2))        # [B, 256, 32, 32]
-        skip4 = self.enc4(self.pool(skip3))        # [B, 512, 16, 16]
-        hidden = self.bottleneck(self.pool(skip4)) # [B, 1024, 8, 8]
+        skip1 = self.enc1(images)  # [B, 64, 128, 128]
+        skip2 = self.enc2(self.pool(skip1))  # [B, 128, 64, 64]
+        skip3 = self.enc3(self.pool(skip2))  # [B, 256, 32, 32]
+        skip4 = self.enc4(self.pool(skip3))  # [B, 512, 16, 16]
+        hidden = self.bottleneck(self.pool(skip4))  # [B, 1024, 8, 8]
 
         hidden = self.dec4(torch.cat([self.up4(hidden), skip4], dim=1))
         hidden = self.dec3(torch.cat([self.up3(hidden), skip3], dim=1))
         hidden = self.dec2(torch.cat([self.up2(hidden), skip2], dim=1))
         hidden = self.dec1(torch.cat([self.up1(hidden), skip1], dim=1))
-        return self.head(hidden)                   # [B, 1, 128, 128]
+        return self.head(hidden)  # [B, 1, 128, 128]
 
 
 def dice_score(logits, targets):
