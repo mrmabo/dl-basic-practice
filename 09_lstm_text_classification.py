@@ -99,23 +99,45 @@ class TextClassifier(nn.Module):
         self.head = nn.Linear(64, 1)
 
     def forward(self, tokens, lengths):
-        # tokens: [B, L]
-        # lengths: [B]
-        embedded = self.embedding(tokens)  # [B, L] -> [B, L, 64]
+        # tokens: [batch_size, sequence_length]
+        #   batch_size      = number of SMS messages in the batch
+        #   sequence_length = padded token length of the longest SMS in the batch
+        #
+        # lengths: [batch_size]
+        #   one real (unpadded) sequence length for each SMS in the batch
+        embedded = self.embedding(
+            tokens
+        )  # [batch_size, sequence_length] -> [batch_size, sequence_length, embedding_dim]
+           # embedding_dim = 64; each token is represented by a 64-dimensional embedding vector
 
         packed = nn.utils.rnn.pack_padded_sequence(
             embedded, lengths.cpu(), batch_first=True, enforce_sorted=False
-        )  # PackedSequence; effective data excludes PAD timesteps
+        )  # PackedSequence containing only valid timesteps; PAD positions are excluded
 
         _, (hidden, _) = self.lstm(
             packed
-        )  # hidden: [num_layers * num_directions, B, hidden_size] = [1, B, 64]
+        )  # hidden: [num_layers * num_directions, batch_size, hidden_size]
+           # here: [1, batch_size, 64]
+           # num_layers = 1, num_directions = 1, hidden_size = 64
 
-        last_hidden = hidden[-1]  # [1, B, 64] -> [B, 64]
-        logits = self.head(last_hidden)  # [B, 64] -> [B, 1]
-        logits = logits.squeeze(1)  # [B, 1] -> [B]
+        last_hidden = hidden[
+            -1
+        ]  # [num_layers * num_directions, batch_size, hidden_size]
+           # -> [batch_size, hidden_size]
+           # each SMS is now represented by one 64-dimensional hidden vector
 
-        return logits  # [B]
+        logits = self.head(
+            last_hidden
+        )  # [batch_size, hidden_size] -> [batch_size, output_dim]
+           # hidden_size = 64, output_dim = 1
+           # output_dim = 1 means one binary-classification logit per SMS
+
+        logits = logits.squeeze(
+            1
+        )  # [batch_size, output_dim=1] -> [batch_size]
+           # removes only the size-1 output dimension; no prediction value is lost
+
+        return logits  # [batch_size]: one spam-classification logit per SMS
 
 
 def run_epoch(model, loader, loss_fn, optimizer=None):
