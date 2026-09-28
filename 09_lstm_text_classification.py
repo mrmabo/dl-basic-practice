@@ -99,12 +99,23 @@ class TextClassifier(nn.Module):
         self.head = nn.Linear(64, 1)
 
     def forward(self, tokens, lengths):
+        # tokens: [B, L]
+        # lengths: [B]
         embedded = self.embedding(tokens)  # [B, L] -> [B, L, 64]
+
         packed = nn.utils.rnn.pack_padded_sequence(
             embedded, lengths.cpu(), batch_first=True, enforce_sorted=False
-        )
-        _, (hidden, _) = self.lstm(packed)
-        return self.head(hidden[-1]).squeeze(1)
+        )  # PackedSequence; effective data excludes PAD timesteps
+
+        _, (hidden, _) = self.lstm(
+            packed
+        )  # hidden: [num_layers * num_directions, B, hidden_size] = [1, B, 64]
+
+        last_hidden = hidden[-1]  # [1, B, 64] -> [B, 64]
+        logits = self.head(last_hidden)  # [B, 64] -> [B, 1]
+        logits = logits.squeeze(1)  # [B, 1] -> [B]
+
+        return logits  # [B]
 
 
 def run_epoch(model, loader, loss_fn, optimizer=None):
