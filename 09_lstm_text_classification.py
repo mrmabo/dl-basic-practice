@@ -88,7 +88,7 @@ def collate_batch(batch):
     sequences, labels = zip(*batch)
     lengths = torch.tensor([len(sequence) for sequence in sequences])
     padded = pad_sequence(list(sequences), batch_first=True, padding_value=PAD)
-    return padded, lengths, torch.stack(labels)
+    return padded, torch.stack(labels), lengths
 
 
 class TextClassifier(nn.Module):
@@ -146,7 +146,7 @@ def run_epoch(model, loader, loss_fn, optimizer=None):
     loss_sum = correct = count = 0
     context = torch.enable_grad() if training else torch.no_grad()
     with context:
-        for tokens, lengths, labels in loader:
+        for tokens, labels, lengths in loader:
             tokens, labels = tokens.to(DEVICE), labels.to(DEVICE)
             logits = model(tokens, lengths)
             loss = loss_fn(logits, labels)
