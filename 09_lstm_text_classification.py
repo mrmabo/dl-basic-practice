@@ -59,6 +59,31 @@ class SMSDataset(Dataset):
         return torch.tensor(tokens), torch.tensor(label, dtype=torch.float32)
 
 
+def build_dataloader():
+    rows = load_rows()
+    train_rows, temp_rows = train_test_split(
+        rows, test_size=0.3, random_state=SEED, stratify=[label for _, label in rows]
+    )
+    val_rows, test_rows = train_test_split(
+        temp_rows,
+        test_size=0.5,
+        random_state=SEED,
+        stratify=[label for _, label in temp_rows],
+    )
+    vocab = build_vocab([text for text, _ in train_rows])
+    loaders = [
+        DataLoader(
+            SMSDataset(split, vocab),
+            BATCH_SIZE,
+            shuffle=(i == 0),
+            collate_fn=collate_batch,
+        )
+        for i, split in enumerate([train_rows, val_rows, test_rows])
+    ]
+    train_loader, val_loader, test_loader = loaders
+    return train_loader, val_loader, test_loader, vocab
+
+
 def collate_batch(batch):
     sequences, labels = zip(*batch)
     lengths = torch.tensor([len(sequence) for sequence in sequences])
@@ -114,28 +139,7 @@ def main():
     random.seed(SEED)
     torch.manual_seed(SEED)
     CHECKPOINT.parent.mkdir(exist_ok=True)
-    rows = load_rows()
-    train_rows, temp_rows = train_test_split(
-        rows, test_size=0.3, random_state=SEED, stratify=[label for _, label in rows]
-    )
-    val_rows, test_rows = train_test_split(
-        temp_rows,
-        test_size=0.5,
-        random_state=SEED,
-        stratify=[label for _, label in temp_rows],
-    )
-    vocab = build_vocab([text for text, _ in train_rows])
-    loaders = [
-        DataLoader(
-            SMSDataset(split, vocab),
-            BATCH_SIZE,
-            shuffle=(i == 0),
-            collate_fn=collate_batch,
-        )
-        for i, split in enumerate([train_rows, val_rows, test_rows])
-    ]
-    train_loader, val_loader, test_loader = loaders
-
+    train_loader, val_loader, test_loader, vocab = build_dataloader()
     model = TextClassifier(len(vocab)).to(DEVICE)
     loss_fn = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
