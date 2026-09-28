@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, Dataset
 """
 单个样本：[L_i, 1] + 标量 label + 整数 L_i
       ↓ collate：补齐并组 batch
-一个 batch：[B, L_max, 1] + [B] labels + [B] lengths
+一个 batch：[B, L_max, 1] features + [B] lengths + [B] labels
       ↓ pack_padded_sequence(features, lengths)
 RNN 根据真实长度处理 → 每条序列输出一个类别预测
 """
@@ -64,7 +64,7 @@ class SequenceDataset(Dataset):
 def collate_sequences(batch):
     sequences, labels, lengths = zip(*batch)
     padded = pad_sequence(list(sequences), batch_first=True)
-    return padded, torch.stack(labels), torch.tensor(lengths, dtype=torch.long)
+    return padded, torch.tensor(lengths, dtype=torch.long), torch.stack(labels)
 
 
 def load_ucr_file(path):
@@ -168,7 +168,7 @@ def evaluate(model, loader, loss_fn):
     correct = 0
     total = 0
     with torch.no_grad():
-        for features, labels, lengths in loader:
+        for features, lengths, labels in loader:
             features = features.to(DEVICE)
             labels = labels.to(DEVICE)
             logits = model(features, lengths)
@@ -196,7 +196,7 @@ def main():
         model.train()
         train_loss = 0.0
         train_count = 0
-        for features, labels, lengths in train_loader:
+        for features, lengths, labels in train_loader:
             features = features.to(DEVICE)
             labels = labels.to(DEVICE)
             optimizer.zero_grad()
@@ -222,7 +222,7 @@ def main():
     )
     test_loss, test_acc = evaluate(model, test_loader, loss_fn)
     print(f"mode={mode} test_loss={test_loss:.4f} test_acc={test_acc:.3f}")
-    features, labels, lengths = next(iter(test_loader))
+    features, lengths, labels = next(iter(test_loader))
     model.eval()
     with torch.no_grad():
         predictions = model(features[:8].to(DEVICE), lengths[:8]).argmax(dim=1).cpu()
