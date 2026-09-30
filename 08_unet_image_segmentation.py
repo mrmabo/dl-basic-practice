@@ -51,6 +51,25 @@ class PetSegmentationDataset(Dataset):
         return image, mask
 
 
+def build_dataloaders():
+    """Create datasets, reserve 500 validation images, and return three loaders.
+
+    The fixed seed makes the train/validation split reproducible.
+    Only the training loader shuffles; validation and test keep their order.
+    Batches contain images [B, 3, 128, 128] and masks [B, 1, 128, 128].
+    """
+    full_train = PetSegmentationDataset("trainval")
+    train_size = len(full_train) - 500
+    train_set, val_set = random_split(
+        full_train, [train_size, 500], generator=torch.Generator().manual_seed(SEED)
+    )
+    test_set = PetSegmentationDataset("test")
+    train_loader = DataLoader(train_set, BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_set, BATCH_SIZE)
+    test_loader = DataLoader(test_set, BATCH_SIZE)
+    return train_loader, val_loader, test_loader
+
+
 def conv_block(in_channels, out_channels):
     """Two 3x3 convolutions and ReLUs, as in each block of the original U-Net."""
     return nn.Sequential(
@@ -140,15 +159,7 @@ def main():
     np.random.seed(SEED)
     torch.manual_seed(SEED)
     CHECKPOINT.parent.mkdir(exist_ok=True)
-    full_train = PetSegmentationDataset("trainval")
-    train_size = len(full_train) - 500
-    train_set, val_set = random_split(
-        full_train, [train_size, 500], generator=torch.Generator().manual_seed(SEED)
-    )
-    test_set = PetSegmentationDataset("test")
-    train_loader = DataLoader(train_set, BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_set, BATCH_SIZE)
-    test_loader = DataLoader(test_set, BATCH_SIZE)
+    train_loader, val_loader, test_loader = build_dataloaders()
 
     model = UNet().to(DEVICE)
     loss_fn = nn.BCEWithLogitsLoss()
