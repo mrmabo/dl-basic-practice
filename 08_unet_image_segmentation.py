@@ -47,6 +47,7 @@ class PetSegmentationDataset(Dataset):
         mask = mask.resize(output_size, Image.Resampling.NEAREST)
         image = to_tensor(image)
 
+        # Original trimaps: 1=pet, 2=background, 3=border. Treat pet and border as foreground.
         mask = (pil_to_tensor(mask) != 2).float()
         return image, mask
 
