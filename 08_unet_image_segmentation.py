@@ -10,6 +10,7 @@ import torch
 from PIL import Image
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
+from torchmetrics.functional.classification import binary_f1_score
 from torchvision.datasets import OxfordIIITPet
 from torchvision.transforms.functional import pil_to_tensor, to_tensor
 
@@ -102,10 +103,15 @@ class UNet(nn.Module):
 
 
 def dice_score(logits, targets):
-    predictions = (logits.sigmoid() >= 0.5).float()
-    intersection = (predictions * targets).sum(dim=(1, 2, 3))
-    denominator = predictions.sum(dim=(1, 2, 3)) + targets.sum(dim=(1, 2, 3))
-    return ((2 * intersection + 1e-6) / (denominator + 1e-6)).mean()
+    """Foreground Dice equals binary F1; average the score of each image."""
+    # Explicit thresholding preserves the original >= 0.5 convention.
+    predictions = (logits.detach().sigmoid() >= 0.5).long()
+    return binary_f1_score(
+        preds=predictions,
+        target=targets.long(),
+        multidim_average="samplewise",
+        zero_division=1,  # Both masks empty: a perfect match.
+    ).mean()
 
 
 def run_epoch(model, loader, loss_fn, optimizer=None):
