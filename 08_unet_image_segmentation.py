@@ -52,12 +52,7 @@ class PetSegmentationDataset(Dataset):
 
 
 def build_dataloaders():
-    """Create datasets, reserve 500 validation images, and return three loaders.
-
-    The fixed seed makes the train/validation split reproducible.
-    Only the training loader shuffles; validation and test keep their order.
-    Batches contain images [B, 3, 128, 128] and masks [B, 1, 128, 128].
-    """
+    """Build train, validation and test loaders."""
     full_train = PetSegmentationDataset("trainval")
     train_size = len(full_train) - 500
     train_set, val_set = random_split(
@@ -81,11 +76,7 @@ def conv_block(in_channels, out_channels):
 
 
 class UNet(nn.Module):
-    """Four down/up stages with 64->1024->64 channels and skip concatenations.
-
-    The paper used unpadded convolutions and cropped skip tensors. This version
-    uses padding=1 so 128x128 Pet images and masks retain identical spatial size.
-    """
+    """Four-level U-Net with padded convolutions and skip concatenations."""
 
     def __init__(self):
         super().__init__()
