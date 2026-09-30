@@ -46,13 +46,12 @@ class PetSegmentationDataset(Dataset):
         image = image.resize(output_size, Image.Resampling.BILINEAR)
         mask = mask.resize(output_size, Image.Resampling.NEAREST)
         image = to_tensor(image)
-        # Original trimaps: 1=pet, 2=background, 3=border. Treat pet and border as foreground.
+
         mask = (pil_to_tensor(mask) != 2).float()
         return image, mask
 
 
 def build_dataloaders():
-    """Build train, validation and test loaders."""
     full_train = PetSegmentationDataset("trainval")
     train_size = len(full_train) - 500
     train_set, val_set = random_split(
@@ -66,7 +65,6 @@ def build_dataloaders():
 
 
 def conv_block(in_channels, out_channels):
-    """Two 3x3 convolutions and ReLUs, as in each block of the original U-Net."""
     return nn.Sequential(
         nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
         nn.ReLU(inplace=True),
@@ -76,7 +74,6 @@ def conv_block(in_channels, out_channels):
 
 
 class UNet(nn.Module):
-    """Four-level U-Net with padded convolutions and skip concatenations."""
 
     def __init__(self):
         super().__init__()
@@ -134,14 +131,13 @@ class UNet(nn.Module):
 
 
 def dice_score(logits, targets):
-    """Foreground Dice equals binary F1; average the score of each image."""
-    # Explicit thresholding preserves the original >= 0.5 convention.
+
     predictions = (logits.detach().sigmoid() >= 0.5).long()
     return binary_f1_score(
         preds=predictions,
         target=targets.long(),
         multidim_average="samplewise",
-        zero_division=1,  # Both masks empty: a perfect match.
+        zero_division=1,
     ).mean()
 
 
