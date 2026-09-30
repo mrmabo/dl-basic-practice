@@ -108,17 +108,49 @@ class UNet(nn.Module):
         self.head = nn.Conv2d(64, 1, kernel_size=1)
 
     def forward(self, images):
-        skip1 = self.enc1(images)  # [B, 64, 128, 128]
-        skip2 = self.enc2(self.pool(skip1))  # [B, 128, 64, 64]
-        skip3 = self.enc3(self.pool(skip2))  # [B, 256, 32, 32]
-        skip4 = self.enc4(self.pool(skip3))  # [B, 512, 16, 16]
-        hidden = self.bottleneck(self.pool(skip4))  # [B, 1024, 8, 8]
+        # Input: images [B, 3, 128, 128].
+        # conv_block contains two 3x3 convolutions with padding=1:
+        # it changes channels but preserves height and width.
+        # Encoder: save each block output for the matching skip connection.
+        skip1 = self.enc1(images)          # [B, 64, 128, 128]
+        pooled1 = self.pool(skip1)         # [B, 64, 64, 64]
 
-        hidden = self.dec4(torch.cat([self.up4(hidden), skip4], dim=1))
-        hidden = self.dec3(torch.cat([self.up3(hidden), skip3], dim=1))
-        hidden = self.dec2(torch.cat([self.up2(hidden), skip2], dim=1))
-        hidden = self.dec1(torch.cat([self.up1(hidden), skip1], dim=1))
-        return self.head(hidden)  # [B, 1, 128, 128]
+        skip2 = self.enc2(pooled1)         # [B, 128, 64, 64]
+        pooled2 = self.pool(skip2)         # [B, 128, 32, 32]
+
+        skip3 = self.enc3(pooled2)         # [B, 256, 32, 32]
+        pooled3 = self.pool(skip3)         # [B, 256, 16, 16]
+
+        skip4 = self.enc4(pooled3)         # [B, 512, 16, 16]
+        pooled4 = self.pool(skip4)         # [B, 512, 8, 8]
+
+        hidden = self.bottleneck(pooled4)  # [B, 1024, 8, 8]
+
+        # Decoder: upsample -> concatenate skip -> apply conv_block.
+        # dim=1 concatenates channels; matching spatial sizes stay unchanged.
+        upsampled4 = self.up4(hidden)      # [B, 512, 16, 16]
+        concatenated4 = torch.cat([upsampled4, skip4], dim=1)
+        # concatenated4: [B, 1024, 16, 16] (512 + 512 channels)
+        hidden = self.dec4(concatenated4)  # [B, 512, 16, 16]
+
+        upsampled3 = self.up3(hidden)      # [B, 256, 32, 32]
+        concatenated3 = torch.cat([upsampled3, skip3], dim=1)
+        # concatenated3: [B, 512, 32, 32] (256 + 256 channels)
+        hidden = self.dec3(concatenated3)  # [B, 256, 32, 32]
+
+        upsampled2 = self.up2(hidden)      # [B, 128, 64, 64]
+        concatenated2 = torch.cat([upsampled2, skip2], dim=1)
+        # concatenated2: [B, 256, 64, 64] (128 + 128 channels)
+        hidden = self.dec2(concatenated2)  # [B, 128, 64, 64]
+
+        upsampled1 = self.up1(hidden)      # [B, 64, 128, 128]
+        concatenated1 = torch.cat([upsampled1, skip1], dim=1)
+        # concatenated1: [B, 128, 128, 128] (64 + 64 channels)
+        hidden = self.dec1(concatenated1)  # [B, 64, 128, 128]
+
+        # One raw foreground logit per pixel; BCEWithLogitsLoss handles sigmoid.
+        logits = self.head(hidden)        # [B, 1, 128, 128]
+        return logits
 
 
 def dice_score(logits, targets):
