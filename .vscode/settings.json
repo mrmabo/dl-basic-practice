@@ -5,5 +5,22 @@
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true
-    }
+    },
+    "python.analysis.packageIndexDepths": [
+        {
+            "name": "torch",
+            "depth": 3,
+            "includeAllSymbols": false
+        },
+        {
+            "name": "torchvision",
+            "depth": 3,
+            "includeAllSymbols": false
+        },
+        {
+            "name": "torchmetrics",
+            "depth": 3,
+            "includeAllSymbols": false
+        }
+    ]
 }
