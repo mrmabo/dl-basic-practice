@@ -131,9 +131,10 @@ class UNet(nn.Module):
         return logits
 
 
+@torch.no_grad()
 def dice_score(logits, targets):
 
-    predictions = (logits.detach().sigmoid() >= 0.5).long()
+    predictions = (logits.sigmoid() >= 0.5).long()
     return binary_f1_score(
         preds=predictions,
         target=targets.long(),
