@@ -5,7 +5,7 @@
 ## 学习阶段
 
 - [第一阶段：基础训练闭环](STAGE_1_BASIC_FLOWS.md)：01–07
-- [第二阶段：主流深度学习任务](STAGE_2_MAINSTREAM_FLOWS.md)：08–14
+- [第二阶段：主流深度学习任务](STAGE_2_MAINSTREAM_FLOWS.md)：08–16
 - [第三阶段：强化学习流程](STAGE_3_REINFORCEMENT_LEARNING.md)：未来实现
 
 ## 创建 Conda 环境
@@ -75,6 +75,8 @@ python .\06_rnn_sequence_classification.py
 | 12 | Faster R-CNN 目标检测 | 第二阶段 |
 | 13 | DistilBERT 文本微调 | 第二阶段 |
 | 14 | DDPM 图像生成 | 第二阶段 |
+| 15 | 手写 ResNet-18 图像分类 | 第二阶段 |
+| 16 | Informer 多步时序预测 | 第二阶段 |
 
 ## 练习方法
 
@@ -94,3 +96,7 @@ python .\06_rnn_sequence_classification.py
 ```
 
 先独立完成，再与编号脚本对照。重点检查 tensor shape、dtype、device、数据划分和 data leakage。数据、checkpoint 和模型权重均由 `.gitignore` 排除。
+
+## 手写 ResNet 与 Informer
+
+运行命令、逐层 shape 和论文适配说明见 [ResNet 与 Informer 练习](docs/ResNet_Informer_Practice.md)。

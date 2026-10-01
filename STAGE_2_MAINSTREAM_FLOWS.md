@@ -1,4 +1,4 @@
-# 第二阶段：主流深度学习任务（08–14）
+# 第二阶段：主流深度学习任务（08–16）
 
 ## 目标
 
@@ -15,8 +15,10 @@
 | 12 | Faster R-CNN 目标检测 | Penn-Fudan Pedestrian | bounding box、可变长度标签、IoU、预测框可视化 |
 | 13 | DistilBERT 文本微调 | UCI SMS Spam | tokenizer、attention mask、动态padding、预训练模型微调 |
 | 14 | DDPM 图像生成 | MNIST | noise schedule、timestep embedding、噪声预测、反向采样 |
+| 15 | 手写 ResNet-18 图像分类 | CIFAR-10 | BasicBlock、相加shortcut、投影shortcut、从零训练 |
+| 16 | Informer 多步时序预测 | ETTh1 | ProbSparse、distilling、因果decoder、未来零占位 |
 
-完成01–14后，练习范围覆盖表格、图像分类/分割/检测、文本序列与预训练模型、单步与多步时序、异常检测、图神经网络、迁移学习和生成模型等主要任务范式。
+完成01–16后，练习范围覆盖表格、图像分类/分割/检测、文本序列与预训练模型、单步与多步时序、异常检测、图神经网络、迁移学习和生成模型等主要任务范式。
 
 ## 下载与运行
 
@@ -43,6 +45,12 @@ python 13_transformer_text_finetuning.py
 
 python download_data/download_14_ddpm_mnist.py
 python 14_ddpm_image_generation.py
+
+python download_data/download_15_resnet_cifar10.py
+python 15_resnet_image_classification.py
+
+python download_data/download_16_informer_etth1.py
+python 16_informer_time_series_forecast.py
 ```
 
 ## 08：U-Net 结构
@@ -118,3 +126,7 @@ clean image + random timestep + sampled noise
 - 理解判别模型与生成模型的训练差异
 - 从原始图片、文本或时序数据开始执行 inference
 - 独立修改公开流程以适配新的同类型数据集
+
+## 15–16：模型结构进阶
+
+新增流程均有独立 build_dataloaders、训练、评估、checkpoint 和推理。详细结构、shape、数据边界和论文配置区别见 [ResNet 与 Informer 练习](docs/ResNet_Informer_Practice.md)。15保留10的预训练迁移学习流程，另行手写残差主干；16在编码器实现ProbSparse，在解码器使用完整因果注意力，属于紧凑教学版，不声称复现论文精度。
