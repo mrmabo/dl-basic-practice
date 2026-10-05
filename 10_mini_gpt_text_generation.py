@@ -1,21 +1,20 @@
-"""流程10：从零训练小型 GPT，学习英文文本的 next-token prediction。
+"""流程10：用DailyDialog短英文对话从零训练Mini GPT。
 
-做什么：用约 1.1 MB 的 Tiny Shakespeare 英文文本训练字符级语言模型。
-怎么做：字符词表 -> 连续文本划分 train/val/test -> 右移一位的标签
--> token/position embedding -> 因果 self-attention + FFN + 残差
--> 每个位置的词表 logits -> CrossEntropyLoss -> 自回归采样。
-目标：理解 GPT 如何生成文字，并能从空白文件重写完整流程。
-
-这是 decoder-only Transformer；没有 encoder-decoder cross-attention。
-字符就是本练习的 token，真实 LLM 通常使用子词 tokenizer。
-因果遮罩禁止看到未来标签；CE 等价于最小化正确下一字符的负对数概率。
-小数据从零训练只会模仿莎士比亚文本，不具备可靠的通用聊天/指令能力。
-运行：先执行 download_data/download_10_tiny_shakespeare.py，再运行本文件。
---generate-only 加载已有权重；--interactive 进入提示词续写循环。
+目标：手写 decoder-only Transformer 的完整问答训练闭环。
+数据：公开DailyDialog（ConvLab镜像），默认5000组短问答，官方split独立保存。
+输入：[BOS] + 问题字符 + [SEP] + 回答字符；标签右移一位。
+只对回答和EOS计算CrossEntropyLoss，问题和padding标签为-100。
+token/position embedding -> 因果多头Q/K/V注意力 -> 残差FFN
+-> [B,T,V] logits -> loss -> backward -> optimizer -> 最佳checkpoint。
+推理：输入[BOS]+问题+[SEP]，逐字符采样，遇EOS停止，只显示回答。
+字符级教学模型约65万参数，不能保证通用问答质量；每轮聊天独立。
+先运行 download_data/download_10_dailydialog.py；再训练；
+--generate-only --interactive 加载DailyDialog权重聊天。
 """
 
 import argparse
 import math
+import json
 from pathlib import Path
 
 import torch
@@ -23,48 +22,55 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 ROOT = Path(__file__).resolve().parent
-DATA_PATH = ROOT / "data" / "tiny_shakespeare" / "input.txt"
-CHECKPOINT = ROOT / "checkpoints" / "10_mini_gpt.pt"
+DATA_PATH = ROOT / "data" / "dailydialog"
+CHECKPOINT = ROOT / "checkpoints" / "10_mini_gpt_dailydialog.pt"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SEED = 42
-BLOCK_SIZE = 128
+BLOCK_SIZE = 256
 BATCH_SIZE = 32
 EPOCHS = 10
 D_MODEL = 128
 N_HEADS = 4
 N_LAYERS = 3
 DROPOUT = 0.1
+PAD, UNK, BOS, SEP, EOS = range(5)
+IGNORE_INDEX = -100
+MAX_PROMPT_CHARS = 96
 
 
-class TextDataset(Dataset):
-    def __init__(self, tokens, block_size):
-        self.tokens = tokens
-        self.block_size = block_size
-        if len(tokens) <= block_size:
-            raise ValueError("Each split needs more tokens than block_size.")
+def encode(text, chars):
+    stoi = {c: i + 5 for i, c in enumerate(chars)}
+    return [stoi.get(c, UNK) for c in text]
+
+
+class DialogueDataset(Dataset):
+    def __init__(self, rows, chars, block_size):
+        self.examples = []
+        for row in rows:
+            question = encode(row['question'], chars)[:MAX_PROMPT_CHARS]
+            # Keep at least an answer token and EOS inside the context.
+            answer = encode(row['answer'], chars)[:block_size - len(question) - 2]
+            sequence = [BOS] + question + [SEP] + answer + [EOS]
+            inputs, targets = sequence[:-1], sequence[1:]
+            # SEP at input index len(question)+1 predicts first answer char.
+            targets[:len(question) + 1] = [IGNORE_INDEX] * (len(question) + 1)
+            pad = block_size - len(inputs)
+            self.examples.append((torch.tensor(inputs + [PAD] * pad),
+                                  torch.tensor(targets + [IGNORE_INDEX] * pad)))
+        if not self.examples:
+            raise ValueError('Empty split: run the DailyDialog download script.')
 
     def __len__(self):
-        # Non-overlapping input blocks keep an epoch small; labels shift by one.
-        return (len(self.tokens) - 1) // self.block_size
+        return len(self.examples)
 
     def __getitem__(self, index):
-        start = index * self.block_size
-        x = self.tokens[start : start + self.block_size]
-        y = self.tokens[start + 1 : start + self.block_size + 1]
-        return x, y  # both [T], long; DataLoader produces [B, T]
+        return self.examples[index]  # [T] long -> DataLoader [B,T]
 
 
-def build_dataloaders(text, chars, block_size, batch_size):
-    stoi = {char: index for index, char in enumerate(chars)}
-    # Vocabulary is built from training text only. Unknown held-out characters
-    # map to the training space character, rather than leaking vocabulary.
-    tokens = torch.tensor([stoi.get(c, stoi[" "]) for c in text], dtype=torch.long)
-    train_end, val_end = int(len(tokens) * 0.9), int(len(tokens) * 0.95)
-    splits = [tokens[:train_end], tokens[train_end:val_end], tokens[val_end:]]
-    return tuple(
-        DataLoader(TextDataset(s, block_size), batch_size=batch_size, shuffle=i == 0)
-        for i, s in enumerate(splits)
-    )
+def build_dataloaders(splits, chars, block_size, batch_size):
+    return tuple(DataLoader(DialogueDataset(splits[name], chars, block_size),
+                           batch_size=batch_size, shuffle=name == 'train')
+                 for name in ('train', 'validation', 'test'))
 
 
 class CausalSelfAttention(nn.Module):
@@ -157,36 +163,43 @@ def run_epoch(model, loader, loss_fn, optimizer=None):
                 loss.backward()
                 nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 optimizer.step()
-            total_loss += loss.item() * targets.numel()
-            total_tokens += targets.numel()
+            valid_tokens = (targets != IGNORE_INDEX).sum().item()
+            total_loss += loss.item() * valid_tokens
+            total_tokens += valid_tokens
     return total_loss / total_tokens
 
 
 @torch.no_grad()
-def generate(model, chars, prompt, max_new_tokens=300, temperature=0.8, top_k=20):
-    if temperature <= 0 or max_new_tokens < 0 or top_k < 1:
-        raise ValueError("temperature/top_k must be positive; length nonnegative")
+def generate(model, chars, prompt, max_new_tokens=160, temperature=0.8, top_k=20):
+    if temperature <= 0 or max_new_tokens < 1 or top_k < 1:
+        raise ValueError('temperature, length and top_k must be positive')
+    if not prompt.strip():
+        raise ValueError('Please enter an English question.')
     model.eval()
-    stoi = {c: i for i, c in enumerate(chars)}
-    unknown = sorted(set(prompt) - set(chars))
-    if unknown:
-        raise ValueError(f"Prompt contains characters outside vocabulary: {unknown}")
-    tokens = torch.tensor([[stoi[c] for c in (prompt or "\n")]], device=DEVICE)
-    for _ in range(max_new_tokens):
-        logits = model(tokens[:, -model.block_size :])[:, -1, :] / temperature
-        cutoff = logits.topk(min(top_k, len(chars))).values[:, -1:]
-        logits = logits.masked_fill(logits < cutoff, float("-inf"))
+    question = encode(' '.join(prompt.split()), chars)[:MAX_PROMPT_CHARS]
+    tokens = torch.tensor([[BOS] + question + [SEP]], device=DEVICE)
+    answer = []
+    # Keep the complete prompt in context; leave one position per next token.
+    for _ in range(min(max_new_tokens, model.block_size - tokens.size(1) + 1)):
+        logits = model(tokens)[:, -1, :] / temperature
+        logits[:, [PAD, UNK, BOS, SEP]] = float('-inf')
+        cutoff = logits.topk(min(top_k, len(chars) + 1)).values[:, -1:]
+        logits = logits.masked_fill(logits < cutoff, float('-inf'))
         next_token = torch.multinomial(logits.softmax(dim=-1), 1)
+        index = next_token.item()
+        if index == EOS:
+            break
+        answer.append(chars[index - 5])
         tokens = torch.cat([tokens, next_token], dim=1)
-    return "".join(chars[i] for i in tokens[0].tolist())
+    return ''.join(answer).strip() or '(No response; try more training or another question.)'
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--epochs", type=int, default=EPOCHS)
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
-    parser.add_argument("--prompt", default="ROMEO:\n")
-    parser.add_argument("--max-new-tokens", type=int, default=300)
+    parser.add_argument("--prompt", default="Hello, how are you?")
+    parser.add_argument("--max-new-tokens", type=int, default=160)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--generate-only", action="store_true")
     parser.add_argument("--interactive", action="store_true")
@@ -195,14 +208,16 @@ def main():
     if args.epochs < 1 or args.batch_size < 1:
         parser.error("epochs and batch-size must be positive")
     if not args.generate_only:
-        if not DATA_PATH.exists():
+        if not (DATA_PATH / "train.json").exists():
             raise FileNotFoundError(
-                "Run python download_data/download_10_tiny_shakespeare.py"
+                "Run python download_data/download_10_dailydialog.py"
             )
-        text = DATA_PATH.read_text(encoding="utf-8")
-        chars = sorted(set(text[: int(len(text) * 0.9)]))
+        splits = {name: json.loads((DATA_PATH / f"{name}.json").read_text(encoding="utf-8"))
+                  for name in ("train", "validation", "test")}
+        chars = sorted(set("".join(row["question"] + row["answer"]
+                                     for row in splits["train"])))
         config = dict(
-            vocab_size=len(chars),
+            vocab_size=len(chars) + 5,
             block_size=BLOCK_SIZE,
             d_model=D_MODEL,
             n_heads=N_HEADS,
@@ -210,13 +225,13 @@ def main():
             dropout=DROPOUT,
         )
         train_loader, val_loader, test_loader = build_dataloaders(
-            text, chars, BLOCK_SIZE, args.batch_size
+            splits, chars, BLOCK_SIZE, args.batch_size
         )
         model = MiniGPT(**config).to(DEVICE)
         print(
             f"device={DEVICE} vocab={len(chars)} parameters={sum(p.numel() for p in model.parameters()):,}"
         )
-        loss_fn = nn.CrossEntropyLoss()
+        loss_fn = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
         optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
         best_val_loss = float("inf")
         CHECKPOINT.parent.mkdir(parents=True, exist_ok=True)
@@ -226,15 +241,18 @@ def main():
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 torch.save(
-                    {"model": model.state_dict(), "chars": chars, "config": config},
+                    {"model": model.state_dict(), "chars": chars, "config": config,
+                     "format": "dailydialog-char-v1"},
                     CHECKPOINT,
                 )
             print(
                 f"epoch={epoch:02d} train_loss={train_loss:.4f} val_loss={val_loss:.4f} val_perplexity={math.exp(min(val_loss, 20)):.2f}"
             )
     if not CHECKPOINT.exists():
-        raise FileNotFoundError("Train the model before using --generate-only")
+        raise FileNotFoundError("Train on DailyDialog first: python 10_mini_gpt_text_generation.py")
     saved = torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True)
+    if saved.get("format") != "dailydialog-char-v1":
+        raise ValueError("Incompatible checkpoint. Retrain on DailyDialog.")
     chars = saved["chars"]
     model = MiniGPT(**saved["config"]).to(DEVICE)
     model.load_state_dict(saved["model"])
@@ -243,10 +261,11 @@ def main():
         print(
             f"test_loss={test_loss:.4f} test_perplexity={math.exp(min(test_loss, 20)):.2f}"
         )
-    print(generate(model, chars, args.prompt, args.max_new_tokens, args.temperature))
+    print("You:", args.prompt)
+    print("Mini GPT:", generate(model, chars, args.prompt, args.max_new_tokens, args.temperature))
     if args.interactive:
         print(
-            "Enter an English prompt for continuation; /quit exits. No conversation memory."
+            "Ask a short English question; /quit exits. Each question is independent."
         )
         while True:
             try:

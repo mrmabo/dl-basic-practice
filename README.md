@@ -70,7 +70,7 @@ python .\06_rnn_sequence_classification.py
 | 07 | GNN 节点分类 | 第一阶段 |
 | 08 | U-Net 图像分割 | 第二阶段 |
 | 09 | Embedding + LSTM 文本分类 | 第二阶段 |
-| 10 | Mini GPT 英文文本生成 | 第二阶段 |
+| 10 | Mini GPT 英文聊天 | 第二阶段 |
 | 11 | ResNet18 迁移学习 | 第二阶段 |
 | 12 | 多变量多步时序预测 | 第二阶段 |
 | 13 | Faster R-CNN 目标检测 | 第二阶段 |
@@ -102,14 +102,16 @@ python .\06_rnn_sequence_classification.py
 
 运行命令、逐层 shape 和论文适配说明见 [ResNet 与 Informer 练习](docs/ResNet_Informer_Practice.md)。
 
-## Mini GPT：英文文本生成（10）
+## Mini GPT：DailyDialog英文聊天（10）
 
-小型公开英文数据 Tiny Shakespeare 约1.1 MB；从零训练字符级 decoder-only Transformer，练习因果注意力、下一字符预测和自回归生成。
+默认使用5000组短英文日常对话训练、500组验证、500组测试。手写字符级decoder-only Transformer；输入一句英文，生成下一句回复。
 
 ```bash
-python download_data/download_10_tiny_shakespeare.py
+python download_data/download_10_dailydialog.py
 python 10_mini_gpt_text_generation.py
 python 10_mini_gpt_text_generation.py --generate-only --interactive
 ```
 
-训练默认10轮，模型约63万参数。它是莎士比亚风格续写器，尚未进行聊天指令微调。详细原理与练习见第二阶段笔记的第10节。
+可测试 `Hello, how are you?`、`What do you do on weekends?`、`Would you like some coffee?`。输入 `/quit` 退出。每个问题独立，不保存多轮上下文。
+
+新权重为 `checkpoints/10_mini_gpt_dailydialog.pt`，需要重新训练；旧莎士比亚权重不适用于本流程。模型约65万参数，小数据从零训练的回复质量有限。详细原理见第二阶段第10节。

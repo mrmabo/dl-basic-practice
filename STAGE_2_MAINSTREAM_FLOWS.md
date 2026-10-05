@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 08 | U-Net 图像分割 | Oxford-IIIT Pet | image/mask、skip connection、Dice |
 | 09 | Embedding + LSTM 文本分类 | UCI SMS Spam | tokenize、vocabulary、padding、collate_fn |
-| 10 | Mini GPT 英文文本生成 | Tiny Shakespeare（约1.1 MB） | 因果注意力、下一token预测、自回归生成 |
+| 10 | Mini GPT 英文聊天 | DailyDialog（默认5000组训练问答） | 因果注意力、下一token预测、自回归生成 |
 | 11 | ResNet18 迁移学习 | CIFAR-10 | 预训练权重、冻结、解冻、分组学习率 |
 | 12 | 多变量多步时序预测 | ETTh1 | 历史96步预测未来24步、逆标准化 |
 | 13 | Faster R-CNN 目标检测 | Penn-Fudan Pedestrian | bounding box、可变长度标签、IoU、预测框可视化 |
@@ -32,7 +32,7 @@ python 08_unet_image_segmentation.py
 python download_data/download_09_sms_spam.py
 python 09_lstm_text_classification.py
 
-python download_data/download_10_tiny_shakespeare.py
+python download_data/download_10_dailydialog.py
 python 10_mini_gpt_text_generation.py
 
 python download_data/download_11_cifar10.py
@@ -135,26 +135,31 @@ clean image + random timestep + sampled noise
 
 新增流程均有独立 build_dataloaders、训练、评估、checkpoint 和推理。详细结构、shape、数据边界和论文配置区别见 [ResNet 与 Informer 练习](docs/ResNet_Informer_Practice.md)。16保留11的预训练迁移学习流程，另行手写残差主干；17在编码器实现ProbSparse，在解码器使用完整因果注意力，属于紧凑教学版，不声称复现论文精度。
 
-## 10：从零训练 Mini GPT
+## 10：DailyDialog Mini GPT英文聊天
 
-这个流程使用小型公开英文语料 Tiny Shakespeare（约1.1 MB）。字符级 tokenizer 无需安装新的依赖；模型约63万参数，3层、4个attention heads、128维embedding、128字符上下文。显存不足时减小 batch size；CPU也能运行，但完整训练较慢。
+数据来源：[DailyDialog论文](https://aclanthology.org/I17-1099/)、[ConvLab镜像](https://huggingface.co/datasets/ConvLab/dailydialog)。镜像标注CC BY-NC-SA 4.0，供非商业学习使用。下载压缩包约3.7 MB，仅处理JSON，不运行远程代码。
+
+保留官方train/validation/test对话划分，再提取相邻发言作为问题/回答。仅保留问题不超过96字符、回答不超过150字符的完整短对话。固定种子抽样，默认5000/500/500组问答，同一对话不会跨split。DailyDialog是人与人日常对话，不是知识助手指令数据。
 
 ```bash
-python download_data/download_10_tiny_shakespeare.py
+python download_data/download_10_dailydialog.py
 python 10_mini_gpt_text_generation.py
-# 先用一轮检查流程，正式训练默认10轮
+# 快速验证，或调整数据规模
 python 10_mini_gpt_text_generation.py --epochs 1 --batch-size 8
-# 加载最佳验证权重，交互式输入英文提示
+python download_data/download_10_dailydialog.py --train-pairs 2000 --eval-pairs 200
+# 加载最佳权重交互
 python 10_mini_gpt_text_generation.py --generate-only --interactive
-python 10_mini_gpt_text_generation.py --generate-only --prompt "ROMEO:" --temperature 0.8
+python 10_mini_gpt_text_generation.py --generate-only --prompt "Hello, how are you?"
 ```
 
-训练文本按连续区间划分90%/5%/5%，然后在各自区间构建窗口，避免窗口跨越划分边界。词表只使用训练文本，验证/测试的未知字符映射为空格。输入和标签为[B,T]，标签右移一位；输出[B,T,V]，展平后计算CrossEntropyLoss。手写Q/K/V、多头拆分、缩放点积和下三角因果遮罩；每个block使用LayerNorm、残差连接和FFN。验证loss选择checkpoint，测试报告loss和perplexity。
+字符词表只使用训练集。PAD/UNK/BOS/SEP/EOS是五个独立token。训练序列为 `[BOS] question [SEP] answer [EOS]`，输入和标签错开一位；问题部分与padding标签为-100，CrossEntropyLoss只计算回答字符及EOS，平均loss按有效标签数统计。
 
-生成时只取最后位置的logits，使用temperature和top-k采样，将新字符拼回输入；上下文超过128字符时截取末尾128个字符。checkpoint同时保存词表和模型配置。输入字符必须在词表内。
+输入/标签[B,T]，logits[B,T,V]；256字符上下文、128维embedding、4个heads、3层，约65万参数。Q/K/V、缩放点积、下三角因果遮罩、LayerNorm、残差和FFN均在单文件实现。右侧padding无需额外注意力遮罩：因果注意力使有效位置看不到后面的PAD，padding标签也不参与loss。
 
-这是教学用GPT文本续写器。交互界面不代表模型经过聊天训练，它会模仿莎士比亚的语言风格，不保证回答问题，也不保留多轮会话。想进一步做指令聊天，需要对话数据和通常更大的预训练模型。
+推理构建[BOS]+问题+[SEP]，使用temperature和top-k逐字符采样。禁止生成PAD/UNK/BOS/SEP，遇EOS结束；只显示回答。过长问题截取前96字符，未知字符映射UNK。每次提问独立。模型未预训练，不能保证理解任意问题，也不保证事实正确。
 
-练习：解释为什么标签右移、因果遮罩如何阻止偷看答案、分类输出[B,C]与语言模型输出[B,T,V]的区别，以及为什么推理要循环采样而训练能并行预测全部位置。
+checkpoint保存模型、字符词表、配置与格式标识，文件为 `checkpoints/10_mini_gpt_dailydialog.pt`。旧莎士比亚权重不能复用。普通训练命令从零开始，不会续训已有权重。
 
-验证：下载真实语料成功；检查默认模型的输出shape、标签右移、因果性与参数更新。用真实语料前20000字符和缩小模型跑通1轮train/val/test、checkpoint重载与生成；未运行默认模型完整10轮训练，生成质量需在本机训练后评估。
+测试提示：`Hello, how are you?`、`What do you do on weekends?`、`Would you like some coffee?`。关注拼写、句子通顺程度及与问题的相关性，结合验证loss观察进步。
+
+验证：真实DailyDialog下载及5000/500/500抽样通过；检查split隔离、回答标签mask、因果性、参数更新和EOS停止。用各32组真实问答及缩小模型跑通一轮训练、测试、checkpoint重载和生成；未进行默认模型完整10轮训练。
