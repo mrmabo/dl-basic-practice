@@ -5,7 +5,7 @@
 ## 学习阶段
 
 - [第一阶段：基础训练闭环](STAGE_1_BASIC_FLOWS.md)：01–07
-- [第二阶段：主流深度学习任务](STAGE_2_MAINSTREAM_FLOWS.md)：08–16
+- [第二阶段：主流深度学习任务](STAGE_2_MAINSTREAM_FLOWS.md)：08–17
 - [第三阶段：强化学习流程](STAGE_3_REINFORCEMENT_LEARNING.md)：未来实现
 
 ## 创建 Conda 环境
@@ -42,8 +42,8 @@ python download_data/download_08_oxford_pet.py
 python 08_unet_image_segmentation.py
 
 # 第二阶段后续流程示例
-python download_data/download_12_penn_fudan.py
-python 12_faster_rcnn_object_detection.py
+python download_data/download_13_penn_fudan.py
+python 13_faster_rcnn_object_detection.py
 ```
 
 ## RNN 序列分类：切换长度模式
@@ -70,13 +70,14 @@ python .\06_rnn_sequence_classification.py
 | 07 | GNN 节点分类 | 第一阶段 |
 | 08 | U-Net 图像分割 | 第二阶段 |
 | 09 | Embedding + LSTM 文本分类 | 第二阶段 |
-| 10 | ResNet18 迁移学习 | 第二阶段 |
-| 11 | 多变量多步时序预测 | 第二阶段 |
-| 12 | Faster R-CNN 目标检测 | 第二阶段 |
-| 13 | DistilBERT 文本微调 | 第二阶段 |
-| 14 | DDPM 图像生成 | 第二阶段 |
-| 15 | 手写 ResNet-18 图像分类 | 第二阶段 |
-| 16 | Informer 多步时序预测 | 第二阶段 |
+| 10 | Mini GPT 英文文本生成 | 第二阶段 |
+| 11 | ResNet18 迁移学习 | 第二阶段 |
+| 12 | 多变量多步时序预测 | 第二阶段 |
+| 13 | Faster R-CNN 目标检测 | 第二阶段 |
+| 14 | DistilBERT 文本微调 | 第二阶段 |
+| 15 | DDPM 图像生成 | 第二阶段 |
+| 16 | 手写 ResNet-18 图像分类 | 第二阶段 |
+| 17 | Informer 多步时序预测 | 第二阶段 |
 
 ## 练习方法
 
@@ -100,3 +101,15 @@ python .\06_rnn_sequence_classification.py
 ## 手写 ResNet 与 Informer
 
 运行命令、逐层 shape 和论文适配说明见 [ResNet 与 Informer 练习](docs/ResNet_Informer_Practice.md)。
+
+## Mini GPT：英文文本生成（10）
+
+小型公开英文数据 Tiny Shakespeare 约1.1 MB；从零训练字符级 decoder-only Transformer，练习因果注意力、下一字符预测和自回归生成。
+
+```bash
+python download_data/download_10_tiny_shakespeare.py
+python 10_mini_gpt_text_generation.py
+python 10_mini_gpt_text_generation.py --generate-only --interactive
+```
+
+训练默认10轮，模型约63万参数。它是莎士比亚风格续写器，尚未进行聊天指令微调。详细原理与练习见第二阶段笔记的第10节。

@@ -18,7 +18,7 @@ EPOCHS = int(os.getenv("EPOCHS", "10"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data" / "resnet_cifar10"
-CHECKPOINT = ROOT / "checkpoints" / "15_resnet18.pt"
+CHECKPOINT = ROOT / "checkpoints" / "16_resnet18.pt"
 
 
 # dataloader
