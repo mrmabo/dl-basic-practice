@@ -13,8 +13,8 @@ token/position embedding -> 因果多头Q/K/V注意力 -> 残差FFN
 """
 
 import argparse
-import math
 import json
+import math
 from pathlib import Path
 
 import torch
@@ -47,18 +47,22 @@ class DialogueDataset(Dataset):
     def __init__(self, rows, chars, block_size):
         self.examples = []
         for row in rows:
-            question = encode(row['question'], chars)[:MAX_PROMPT_CHARS]
+            question = encode(row["question"], chars)[:MAX_PROMPT_CHARS]
             # Keep at least an answer token and EOS inside the context.
-            answer = encode(row['answer'], chars)[:block_size - len(question) - 2]
+            answer = encode(row["answer"], chars)[: block_size - len(question) - 2]
             sequence = [BOS] + question + [SEP] + answer + [EOS]
             inputs, targets = sequence[:-1], sequence[1:]
             # SEP at input index len(question)+1 predicts first answer char.
-            targets[:len(question) + 1] = [IGNORE_INDEX] * (len(question) + 1)
+            targets[: len(question) + 1] = [IGNORE_INDEX] * (len(question) + 1)
             pad = block_size - len(inputs)
-            self.examples.append((torch.tensor(inputs + [PAD] * pad),
-                                  torch.tensor(targets + [IGNORE_INDEX] * pad)))
+            self.examples.append(
+                (
+                    torch.tensor(inputs + [PAD] * pad),
+                    torch.tensor(targets + [IGNORE_INDEX] * pad),
+                )
+            )
         if not self.examples:
-            raise ValueError('Empty split: run the DailyDialog download script.')
+            raise ValueError("Empty split: run the DailyDialog download script.")
 
     def __len__(self):
         return len(self.examples)
@@ -68,9 +72,14 @@ class DialogueDataset(Dataset):
 
 
 def build_dataloaders(splits, chars, block_size, batch_size):
-    return tuple(DataLoader(DialogueDataset(splits[name], chars, block_size),
-                           batch_size=batch_size, shuffle=name == 'train')
-                 for name in ('train', 'validation', 'test'))
+    return tuple(
+        DataLoader(
+            DialogueDataset(splits[name], chars, block_size),
+            batch_size=batch_size,
+            shuffle=name == "train",
+        )
+        for name in ("train", "validation", "test")
+    )
 
 
 class CausalSelfAttention(nn.Module):
@@ -172,26 +181,29 @@ def run_epoch(model, loader, loss_fn, optimizer=None):
 @torch.no_grad()
 def generate(model, chars, prompt, max_new_tokens=160, temperature=0.8, top_k=20):
     if temperature <= 0 or max_new_tokens < 1 or top_k < 1:
-        raise ValueError('temperature, length and top_k must be positive')
+        raise ValueError("temperature, length and top_k must be positive")
     if not prompt.strip():
-        raise ValueError('Please enter an English question.')
+        raise ValueError("Please enter an English question.")
     model.eval()
-    question = encode(' '.join(prompt.split()), chars)[:MAX_PROMPT_CHARS]
+    question = encode(" ".join(prompt.split()), chars)[:MAX_PROMPT_CHARS]
     tokens = torch.tensor([[BOS] + question + [SEP]], device=DEVICE)
     answer = []
     # Keep the complete prompt in context; leave one position per next token.
     for _ in range(min(max_new_tokens, model.block_size - tokens.size(1) + 1)):
         logits = model(tokens)[:, -1, :] / temperature
-        logits[:, [PAD, UNK, BOS, SEP]] = float('-inf')
+        logits[:, [PAD, UNK, BOS, SEP]] = float("-inf")
         cutoff = logits.topk(min(top_k, len(chars) + 1)).values[:, -1:]
-        logits = logits.masked_fill(logits < cutoff, float('-inf'))
+        logits = logits.masked_fill(logits < cutoff, float("-inf"))
         next_token = torch.multinomial(logits.softmax(dim=-1), 1)
         index = next_token.item()
         if index == EOS:
             break
         answer.append(chars[index - 5])
         tokens = torch.cat([tokens, next_token], dim=1)
-    return ''.join(answer).strip() or '(No response; try more training or another question.)'
+    return (
+        "".join(answer).strip()
+        or "(No response; try more training or another question.)"
+    )
 
 
 def main():
@@ -212,10 +224,13 @@ def main():
             raise FileNotFoundError(
                 "Run python download_data/download_10_dailydialog.py"
             )
-        splits = {name: json.loads((DATA_PATH / f"{name}.json").read_text(encoding="utf-8"))
-                  for name in ("train", "validation", "test")}
-        chars = sorted(set("".join(row["question"] + row["answer"]
-                                     for row in splits["train"])))
+        splits = {
+            name: json.loads((DATA_PATH / f"{name}.json").read_text(encoding="utf-8"))
+            for name in ("train", "validation", "test")
+        }
+        chars = sorted(
+            set("".join(row["question"] + row["answer"] for row in splits["train"]))
+        )
         config = dict(
             vocab_size=len(chars) + 5,
             block_size=BLOCK_SIZE,
@@ -241,15 +256,21 @@ def main():
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 torch.save(
-                    {"model": model.state_dict(), "chars": chars, "config": config,
-                     "format": "dailydialog-char-v1"},
+                    {
+                        "model": model.state_dict(),
+                        "chars": chars,
+                        "config": config,
+                        "format": "dailydialog-char-v1",
+                    },
                     CHECKPOINT,
                 )
             print(
                 f"epoch={epoch:02d} train_loss={train_loss:.4f} val_loss={val_loss:.4f} val_perplexity={math.exp(min(val_loss, 20)):.2f}"
             )
     if not CHECKPOINT.exists():
-        raise FileNotFoundError("Train on DailyDialog first: python 10_mini_gpt_text_generation.py")
+        raise FileNotFoundError(
+            "Train on DailyDialog first: python 10_mini_gpt_text_generation.py"
+        )
     saved = torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True)
     if saved.get("format") != "dailydialog-char-v1":
         raise ValueError("Incompatible checkpoint. Retrain on DailyDialog.")
@@ -262,7 +283,10 @@ def main():
             f"test_loss={test_loss:.4f} test_perplexity={math.exp(min(test_loss, 20)):.2f}"
         )
     print("You:", args.prompt)
-    print("Mini GPT:", generate(model, chars, args.prompt, args.max_new_tokens, args.temperature))
+    print(
+        "Mini GPT:",
+        generate(model, chars, args.prompt, args.max_new_tokens, args.temperature),
+    )
     if args.interactive:
         print(
             "Ask a short English question; /quit exits. Each question is independent."
