@@ -24,7 +24,7 @@ CHECKPOINT = ROOT / "checkpoints" / "12_multistep_lstm.pt"
 
 def load_values():
     if not DATA_PATH.exists():
-        raise FileNotFoundError("Run: python download_data/download_12_etth1.py")
+        raise FileNotFoundError("Run: python download_data/download_11_etth1.py")
     with DATA_PATH.open(newline="", encoding="utf-8") as file:
         rows = list(csv.DictReader(file))
     columns = [name for name in rows[0] if name != "date"]

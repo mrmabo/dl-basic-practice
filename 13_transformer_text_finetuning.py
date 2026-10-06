@@ -1,4 +1,4 @@
-"""Flow 14: fine-tune DistilBERT for SMS spam classification."""
+"""Flow 13: fine-tune DistilBERT for SMS spam classification."""
 
 import os
 import random
@@ -24,7 +24,7 @@ CHECKPOINT = ROOT / "checkpoints" / "14_distilbert_sms.pt"
 def load_rows():
     if not DATA_PATH.exists():
         raise FileNotFoundError(
-            "Run: python download_data/download_14_transformer_sms.py"
+            "Run: python download_data/download_13_transformer_sms.py"
         )
     rows = []
     with DATA_PATH.open(encoding="utf-8") as file:

@@ -42,8 +42,8 @@ python download_data/download_08_oxford_pet.py
 python 08_unet_image_segmentation.py
 
 # 第二阶段后续流程示例
-python download_data/download_13_penn_fudan.py
-python 13_faster_rcnn_object_detection.py
+python download_data/download_12_penn_fudan.py
+python 12_faster_rcnn_object_detection.py
 ```
 
 ## RNN 序列分类：切换长度模式
@@ -70,14 +70,14 @@ python .\06_rnn_sequence_classification.py
 | 07 | GNN 节点分类 | 第一阶段 |
 | 08 | U-Net 图像分割 | 第二阶段 |
 | 09 | Embedding + LSTM 文本分类 | 第二阶段 |
-| 10 | Mini GPT 英文聊天 | 第二阶段 |
-| 11 | ResNet18 迁移学习 | 第二阶段 |
-| 12 | 多变量多步时序预测 | 第二阶段 |
-| 13 | Faster R-CNN 目标检测 | 第二阶段 |
-| 14 | DistilBERT 文本微调 | 第二阶段 |
-| 15 | DDPM 图像生成 | 第二阶段 |
-| 16 | 手写 ResNet-18 图像分类 | 第二阶段 |
-| 17 | Informer 多步时序预测 | 第二阶段 |
+| 10 | ResNet18 迁移学习 | 第二阶段 |
+| 11 | 多变量多步时序预测 | 第二阶段 |
+| 12 | Faster R-CNN 目标检测 | 第二阶段 |
+| 13 | DistilBERT 文本微调 | 第二阶段 |
+| 14 | DDPM 图像生成 | 第二阶段 |
+| 15 | 手写 ResNet-18 图像分类 | 第二阶段 |
+| 16 | Informer 多步时序预测 | 第二阶段 |
+| 17 | Mini GPT 英文聊天 | 第二阶段 |
 
 ## 练习方法
 
@@ -102,16 +102,18 @@ python .\06_rnn_sequence_classification.py
 
 运行命令、逐层 shape 和论文适配说明见 [ResNet 与 Informer 练习](docs/ResNet_Informer_Practice.md)。
 
-## Mini GPT：DailyDialog英文聊天（10）
+## Mini GPT：DailyDialog英文聊天（17）
 
 默认使用5000组短英文日常对话训练、500组验证、500组测试。手写字符级decoder-only Transformer；输入一句英文，生成下一句回复。
 
 ```bash
-python download_data/download_10_dailydialog.py
-python 10_mini_gpt_text_generation.py
-python 10_mini_gpt_text_generation.py --generate-only --interactive
+python download_data/download_17_dailydialog.py
+python 17_mini_gpt_text_generation.py
+python 17_mini_gpt_text_generation.py --generate-only --interactive
 ```
 
 可测试 `Hello, how are you?`、`What do you do on weekends?`、`Would you like some coffee?`。输入 `/quit` 退出。每个问题独立，不保存多轮上下文。
 
-新权重为 `checkpoints/10_mini_gpt_dailydialog.pt`，需要重新训练；旧莎士比亚权重不适用于本流程。模型约65万参数，小数据从零训练的回复质量有限。详细原理见第二阶段第10节。
+新权重为 `checkpoints/10_mini_gpt_dailydialog.pt`，需要重新训练；旧莎士比亚权重不适用于本流程。模型约65万参数，小数据从零训练的回复质量有限。详细原理见第二阶段第17节。
+
+Mini GPT现移至第17流程；本次仅调整流程编号，沿用 `checkpoints/10_mini_gpt_dailydialog.pt`，已有DailyDialog权重可直接加载，无需因重命名重新训练。
