@@ -80,7 +80,7 @@ class MultiHeadSelfAttention(nn.Module):
 
 if __name__ == "__main__":
     inputs = torch.randn(2, 10, 32)  # [B=2, S=10, D=32]
-    attention = MultiHeadSelfAttention(d_model=32, num_heads=4, dropout=0.1)
+    attention = MultiHeadSelfAttention(d_model=32, num_heads=8, dropout=0.1)
     outputs, weights = attention(inputs)
 
     print("input:", inputs.shape)
