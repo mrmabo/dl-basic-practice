@@ -15,6 +15,8 @@
 |---|---|---|
 | `multi_head_self_attention.py` | Multi-Head Self-Attention | Q/K/V projection、scaled dot-product attention、拆分与拼接多个 head、attention mask |
 
+| `UNet_Blocks.py` | U-Net DoubleConv / Down / Up | 两次卷积、池化下采样、转置卷积上采样与 skip 拼接；Up 要求空间尺寸匹配 |
+
 运行示例：
 
 ```bash
@@ -30,9 +32,9 @@ attention weights:  [B, H, S, S]
 output:             [B, S, D]
 ```
 
-## 未来待实现的常见 Blocks
+## 常见 Blocks 实现清单
 
-以下为待实现清单，按模型家族分类；包含可复用 block 和常见基础组件。不同论文的命名与组合方式可能重叠，深度学习也没有固定、穷尽的 block 目录。本清单覆盖常见模型家族，后续可继续扩展。
+以下为实现进度清单（已勾选表示已实现），按模型家族分类；包含可复用 block 和常见基础组件。不同论文的命名与组合方式可能重叠，深度学习也没有固定、穷尽的 block 目录。本清单覆盖常见模型家族，后续可继续扩展。
 
 ### 基础组件
 
@@ -88,9 +90,9 @@ output:             [B, S, D]
 
 ### 分割、检测与多尺度特征
 
-- [ ] U-Net DoubleConv Block
-- [ ] U-Net Down Block
-- [ ] U-Net Up / Skip Fusion Block
+- [x] U-Net DoubleConv Block
+- [x] U-Net Down Block
+- [x] U-Net Up / Skip Fusion Block
 - [ ] Residual U-Net Block
 - [ ] Transposed Convolution Upsampling Block
 - [ ] Interpolation + Convolution Upsampling Block
@@ -192,4 +194,4 @@ output:             [B, S, D]
 - [ ] Mixture-of-Experts（MoE）Feed-Forward Block
 - [ ] Top-k Router / Expert Gating
 
-以上均为未来计划；当前可运行的实现仍以“已实现模块”列表为准。
+未勾选项为未来计划；已实现模块及文件见上方表格。
