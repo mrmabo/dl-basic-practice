@@ -35,7 +35,7 @@ CHECKPOINT = ROOT / "checkpoints" / "17_informer.pt"
 def load_etth1():
     if not DATA_PATH.exists():
         raise FileNotFoundError(
-            "Run: python download_data/download_17_informer_etth1.py"
+            "Run: python download_data/download_16_informer_etth1.py"
         )
     rows, time_features, timestamps = [], [], []
     with DATA_PATH.open(newline="", encoding="utf-8") as file:

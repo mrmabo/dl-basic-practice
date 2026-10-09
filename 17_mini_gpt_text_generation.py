@@ -1,4 +1,4 @@
-"""流程10：用DailyDialog短英文对话从零训练Mini GPT。
+"""流程17：用DailyDialog短英文对话从零训练Mini GPT。
 
 目标：手写 decoder-only Transformer 的完整问答训练闭环。
 数据：公开DailyDialog（ConvLab镜像），默认5000组短问答，官方split独立保存。
@@ -8,7 +8,7 @@ token/position embedding -> 因果多头Q/K/V注意力 -> 残差FFN
 -> [B,T,V] logits -> loss -> backward -> optimizer -> 最佳checkpoint。
 推理：输入[BOS]+问题+[SEP]，逐字符采样，遇EOS停止，只显示回答。
 字符级教学模型约65万参数，不能保证通用问答质量；每轮聊天独立。
-先运行 download_data/download_10_dailydialog.py；再训练；
+先运行 download_data/download_17_dailydialog.py；再训练；
 --generate-only --interactive 加载DailyDialog权重聊天。
 """
 
@@ -222,7 +222,7 @@ def main():
     if not args.generate_only:
         if not (DATA_PATH / "train.json").exists():
             raise FileNotFoundError(
-                "Run python download_data/download_10_dailydialog.py"
+                "Run python download_data/download_17_dailydialog.py"
             )
         splits = {
             name: json.loads((DATA_PATH / f"{name}.json").read_text(encoding="utf-8"))
@@ -269,7 +269,7 @@ def main():
             )
     if not CHECKPOINT.exists():
         raise FileNotFoundError(
-            "Train on DailyDialog first: python 10_mini_gpt_text_generation.py"
+            "Train on DailyDialog first: python 17_mini_gpt_text_generation.py"
         )
     saved = torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True)
     if saved.get("format") != "dailydialog-char-v1":

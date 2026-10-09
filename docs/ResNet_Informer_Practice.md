@@ -7,17 +7,17 @@
 ```powershell
 git pull
 conda activate py311-dl-basic
-python download_data/download_16_resnet_cifar10.py
-python 16_resnet_image_classification.py
-python download_data/download_17_informer_etth1.py
-python 17_informer_time_series_forecast.py
+python download_data/download_15_resnet_cifar10.py
+python 15_resnet_image_classification.py
+python download_data/download_16_informer_etth1.py
+python 16_informer_time_series_forecast.py
 ```
 
 复用现有 requirements.txt，无新增依赖。下载脚本只在准备数据时运行，训练脚本不自动下载。两者默认10个epoch；可修改 EPOCHS 或在 PowerShell 设置 `$env:EPOCHS="1"`。每个流程都有独立 build_dataloaders、run_epoch、checkpoint 和推理示例。训练第一批及每100批打印进度。
 
-## 16：ResNet-18，CIFAR-10，从零训练
+## 15：ResNet-18，CIFAR-10，从零训练
 
-[代码](../16_resnet_image_classification.py)
+[代码](../15_resnet_image_classification.py)
 
 手写 BasicBlock 与四组残差阶段，不调用 torchvision.models.resnet18。与11号预训练迁移学习流程分开练习。
 
@@ -42,9 +42,9 @@ python 17_informer_time_series_forecast.py
 
 权重：`checkpoints/16_resnet18.pt`。10个epoch用于流程练习，不代表训练已收敛或论文精度。
 
-## 17：Informer，多变量多步预测
+## 16：Informer，多变量多步预测
 
-[代码](../17_informer_time_series_forecast.py)
+[代码](../16_informer_time_series_forecast.py)
 
 实现三个主要结构思想：
 

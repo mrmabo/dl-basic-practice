@@ -59,7 +59,7 @@ def build_dataloaders():
         )
     except RuntimeError as error:
         raise FileNotFoundError(
-            "Run: python download_data/download_11_cifar10.py"
+            "Run: python download_data/download_10_cifar10.py"
         ) from error
     indices = torch.randperm(
         len(augmented), generator=torch.Generator().manual_seed(SEED)
