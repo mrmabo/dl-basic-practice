@@ -41,9 +41,13 @@ output:             [B, S, D]
 - 同一论文可以对应多个 block；论文设计与本仓库的简化实现可能存在差异。
 - DOI 链接可能需要出版商访问权限；arXiv 页面通常可直接下载 PDF。
 
+英文标题说明每组的功能；分组文件名采用 `snake_case`，可用于将同组 blocks 放在一个 `.py` 文件中。如果每个 block 单独建文件，则使用模块名称，例如 `batch_normalization.py` 或 `resnet_basic_block.py`。
+
 建议练习顺序：先读结构图和对应公式 → 标注输入输出 shape → 空白页实现 → 验证行为与梯度 → 回看论文核对。无需每次先读完整篇论文。
 
-### 特征变换与表示
+### 特征变换与表示 / Feature Transformation and Representation
+
+建议分组文件名：`feature_transformation.py`。
 
 - [ ] MLP / Dense Block — [Learning representations by back-propagating errors](https://doi.org/10.1038/323533a0)（基础参考，非独立 block 论文）
 - [ ] Conv-Norm-Activation Block — [Batch Normalization](https://arxiv.org/abs/1502.03167)（通用组合参考）
@@ -54,7 +58,9 @@ output:             [B, S, D]
 - [ ] Position-wise Feed-Forward Network（FFN） — [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
 - [ ] MLP-Mixer Block — [MLP-Mixer](https://arxiv.org/abs/2105.01601)
 
-### 归一化与训练尺度控制
+### 归一化与训练尺度控制 / Normalization and Training Scale Control
+
+建议分组文件名：`normalization.py`。
 
 - [ ] Batch Normalization — [Batch Normalization](https://arxiv.org/abs/1502.03167)
 - [ ] Layer Normalization — [Layer Normalization](https://arxiv.org/abs/1607.06450)
@@ -63,7 +69,9 @@ output:             [B, S, D]
 - [ ] RMSNorm — [Root Mean Square Layer Normalization](https://arxiv.org/abs/1910.07467)
 - [ ] Reversible Instance Normalization（RevIN） — [Reversible Instance Normalization](https://openreview.net/forum?id=cGDAkQo1C0p)
 
-### 残差、密集连接与信息通路
+### 残差、密集连接与信息通路 / Residual and Dense Connections
+
+建议分组文件名：`residual_and_dense_connections.py`。
 
 - [ ] Residual / Add & Norm Block — [ResNet](https://arxiv.org/abs/1512.03385)（残差参考；Add & Norm 另见 Transformer）；[Transformer 的 Add & Norm](https://arxiv.org/abs/1706.03762)
 - [ ] Highway Block — [Highway Networks](https://arxiv.org/abs/1505.00387)
@@ -77,7 +85,9 @@ output:             [B, S, D]
 - [ ] Inception-ResNet Block — [Inception-v4, Inception-ResNet](https://arxiv.org/abs/1602.07261)
 - [ ] CSP Block（Cross Stage Partial） — [CSPNet](https://arxiv.org/abs/1911.11929)
 
-### 局部特征提取与高效卷积
+### 局部特征提取与高效卷积 / Local Feature Extraction and Efficient Convolution
+
+建议分组文件名：`efficient_convolution.py`。
 
 - [ ] Inception Block — [Going Deeper with Convolutions](https://arxiv.org/abs/1409.4842)
 - [ ] Depthwise Separable Convolution — [MobileNets](https://arxiv.org/abs/1704.04861)
@@ -95,7 +105,9 @@ output:             [B, S, D]
 - [ ] RepVGG Block（结构重参数化） — [RepVGG](https://arxiv.org/abs/2101.03697)
 - [ ] Deformable Convolution Block — [Deformable Convolutional Networks](https://arxiv.org/abs/1703.06211)
 
-### 通道、空间注意力与特征调制
+### 通道、空间注意力与特征调制 / Channel and Spatial Attention and Feature Modulation
+
+建议分组文件名：`attention_and_feature_modulation.py`。
 
 - [ ] Squeeze-and-Excitation（SE）Block — [Squeeze-and-Excitation Networks](https://arxiv.org/abs/1709.01507)
 - [ ] CBAM Block — [CBAM](https://arxiv.org/abs/1807.06521)
@@ -108,7 +120,9 @@ output:             [B, S, D]
 - [ ] Adaptive Instance Normalization（AdaIN） — [Arbitrary Style Transfer in Real-time with Adaptive Instance Normalization](https://arxiv.org/abs/1703.06868)
 - [ ] StyleGAN Modulated / Demodulated Convolution — [Analyzing and Improving the Image Quality of StyleGAN](https://arxiv.org/abs/1912.04958)
 
-### 空间分辨率变换与编码器—解码器融合
+### 空间分辨率变换与编码器—解码器融合 / Spatial Resampling and Encoder–Decoder Fusion
+
+建议分组文件名：`resampling_and_skip_fusion.py`。
 
 - [x] U-Net DoubleConv Block — [U-Net](https://arxiv.org/abs/1505.04597)（论文使用无 padding 卷积；当前实现用 padding=1）
 - [x] U-Net Down Block — [U-Net](https://arxiv.org/abs/1505.04597)
@@ -119,7 +133,9 @@ output:             [B, S, D]
 - [ ] PixelShuffle Upsampling Block — [Efficient Sub-Pixel Convolutional Neural Network](https://arxiv.org/abs/1609.05158)
 - [ ] Autoencoder Encoder / Decoder Block — [Reducing the Dimensionality of Data with Neural Networks](https://doi.org/10.1126/science.1127647)（基础参考，具体结构依任务）
 
-### 多尺度聚合与特征金字塔
+### 多尺度聚合与特征金字塔 / Multi-Scale Aggregation and Feature Pyramids
+
+建议分组文件名：`multi_scale_feature_aggregation.py`。
 
 - [ ] Feature Pyramid Network（FPN） — [Feature Pyramid Networks](https://arxiv.org/abs/1612.03144)
 - [ ] Path Aggregation Network（PAN / PANet） — [Path Aggregation Network](https://arxiv.org/abs/1803.01534)
@@ -130,7 +146,9 @@ output:             [B, S, D]
 - [ ] Pyramid Pooling Module（PPM） — [Pyramid Scene Parsing Network](https://arxiv.org/abs/1612.01105)
 - [ ] Multi-scale Feature Fusion Block — [Feature Pyramid Networks](https://arxiv.org/abs/1612.03144)（通用类别的代表性参考）
 
-### 序列匹配与注意力聚合
+### 序列匹配与注意力聚合 / Sequence Matching and Attention Aggregation
+
+建议分组文件名：`sequence_attention.py`。
 
 - [x] Multi-Head Self-Attention — [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
 - [ ] Scaled Dot-Product Attention（独立基础组件） — [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
@@ -146,7 +164,9 @@ output:             [B, S, D]
 - [ ] KV Cache（自回归注意力的缓存组件） — [Fast Transformer Decoding](https://arxiv.org/abs/1911.02150)（推理缓存参考，非独立网络 block）
 - [ ] Temporal Attention Pooling — [Attentive Statistics Pooling for Deep Speaker Embedding](https://arxiv.org/abs/1803.10963)（代表性应用；含加权均值与标准差）
 
-### 位置与图像 token 表示
+### 位置与图像 token 表示 / Positional and Image Token Representations
+
+建议分组文件名：`position_and_token_embeddings.py`。
 
 - [ ] Sinusoidal Positional Encoding — [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
 - [ ] Learned Positional Embedding — [BERT](https://arxiv.org/abs/1810.04805)（代表性应用）
@@ -157,7 +177,9 @@ output:             [B, S, D]
 - [ ] Patch Merging — [Swin Transformer](https://arxiv.org/abs/2103.14030)
 - [ ] Time-series Patch Embedding（PatchTST 风格） — [A Time Series is Worth 64 Words](https://arxiv.org/abs/2211.14730)
 
-### Transformer 层与卷积—注意力组合
+### Transformer 层与卷积—注意力组合 / Transformer Layers and Convolution–Attention Hybrids
+
+建议分组文件名：`transformer_and_hybrid_blocks.py`。
 
 - [ ] Transformer Encoder Block — [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
 - [ ] Transformer Decoder Block（包含 Cross-Attention） — [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
@@ -169,7 +191,9 @@ output:             [B, S, D]
 - [ ] Conv-Attention Hybrid Block — [CoAtNet](https://arxiv.org/abs/2106.04803)（通用类别的代表性实现）
 - [ ] Conformer Block（FFN + Attention + Convolution） — [Conformer](https://arxiv.org/abs/2005.08100)
 
-### 循环状态、因果时序与长序列建模
+### 循环状态、因果时序与长序列建模 / Recurrent, Causal, and Long-Sequence Modeling
+
+建议分组文件名：`recurrent_and_sequence_modeling.py`。
 
 - [ ] Vanilla RNN Cell — [Learning representations by back-propagating errors](https://doi.org/10.1038/323533a0)（基础训练参考；非 RNN Cell 独立首创论文）
 - [ ] LSTM Cell — [Long Short-Term Memory](https://doi.org/10.1162/neco.1997.9.8.1735)（原始版本；现代 forget gate 扩展另见下方）；[Learning to Forget：forget gate 扩展](https://doi.org/10.1162/089976600300015015)
@@ -184,7 +208,9 @@ output:             [B, S, D]
 - [ ] State Space Model（SSM）Block — [Efficiently Modeling Long Sequences with Structured State Spaces](https://arxiv.org/abs/2111.00396)（S4，通用类别的代表性实现）
 - [ ] Selective State Space / Mamba Block — [Mamba](https://arxiv.org/abs/2312.00752)
 
-### 图邻居聚合与图级表示
+### 图邻居聚合与图级表示 / Graph Neighborhood Aggregation and Graph Representations
+
+建议分组文件名：`graph_aggregation.py`。
 
 - [ ] Graph Convolution（GCN）Block — [Semi-Supervised Classification with Graph Convolutional Networks](https://arxiv.org/abs/1609.02907)
 - [ ] GraphSAGE Aggregation Block — [Inductive Representation Learning on Large Graphs](https://arxiv.org/abs/1706.02216)
@@ -194,7 +220,9 @@ output:             [B, S, D]
 - [ ] Graph Transformer Block — [A Generalization of Transformer Networks to Graphs](https://arxiv.org/abs/2012.09699)（代表性实现）
 - [ ] Graph Readout / Global Pooling — [Neural Message Passing for Quantum Chemistry](https://arxiv.org/abs/1704.01212)（通用 readout 参考）
 
-### 潜变量、生成与概率变换
+### 潜变量、生成与概率变换 / Latent Variables, Generation, and Probabilistic Transformations
+
+建议分组文件名：`generative_and_probabilistic_blocks.py`。
 
 - [ ] Variational Autoencoder Reparameterization — [Auto-Encoding Variational Bayes](https://arxiv.org/abs/1312.6114)
 - [ ] Vector Quantization Block（VQ-VAE） — [Neural Discrete Representation Learning](https://arxiv.org/abs/1711.00937)
@@ -202,7 +230,9 @@ output:             [B, S, D]
 - [ ] GAN Discriminator Downsampling Block — [DCGAN](https://arxiv.org/abs/1511.06434)（代表性结构）
 - [ ] Normalizing Flow Affine Coupling Block — [Real NVP](https://arxiv.org/abs/1605.08803)
 
-### 扩散时间条件与去噪特征处理
+### 扩散时间条件与去噪特征处理 / Diffusion Time Conditioning and Denoising
+
+建议分组文件名：`diffusion_blocks.py`。
 
 - [ ] Diffusion Timestep Embedding — [Denoising Diffusion Probabilistic Models](https://arxiv.org/abs/2006.11239)
 - [ ] Time-conditioned Residual Block — [Denoising Diffusion Probabilistic Models](https://arxiv.org/abs/2006.11239)
@@ -210,7 +240,9 @@ output:             [B, S, D]
 - [ ] Adaptive LayerNorm / AdaLN-Zero（DiT） — [Scalable Diffusion Models with Transformers](https://arxiv.org/abs/2212.09748)
 - [ ] Diffusion Transformer（DiT）Block — [Scalable Diffusion Models with Transformers](https://arxiv.org/abs/2212.09748)
 
-### 参数高效适配与稀疏专家路由
+### 参数高效适配与稀疏专家路由 / Parameter-Efficient Adaptation and Sparse Expert Routing
+
+建议分组文件名：`adaptation_and_expert_routing.py`。
 
 - [ ] Adapter Block — [Parameter-Efficient Transfer Learning for NLP](https://arxiv.org/abs/1902.00751)
 - [ ] LoRA Linear — [LoRA](https://arxiv.org/abs/2106.09685)
